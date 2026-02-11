@@ -1,8 +1,6 @@
 # Python runtime
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
 
 # Virtual environments
 .venv/
