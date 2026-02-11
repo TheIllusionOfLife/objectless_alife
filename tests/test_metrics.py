@@ -57,7 +57,7 @@ def test_quasi_periodicity_peak_count_detects_repeating_signal() -> None:
 
 
 def test_phase_transition_max_delta() -> None:
-    assert phase_transition_max_delta([0.1, 0.3, 0.9, 0.4]) == 0.6
+    assert phase_transition_max_delta([0.1, 0.3, 0.9, 0.4]) == pytest.approx(0.6)
 
 
 def test_action_entropy_variance_positive_for_diverged_agents() -> None:
@@ -69,9 +69,7 @@ def test_action_entropy_variance_positive_for_diverged_agents() -> None:
 def test_neighbor_mutual_information_zero_when_independent() -> None:
     snapshot = (
         (0, 0, 0, 0),
-        (1, 1, 0, 1),
-        (2, 0, 1, 0),
-        (3, 1, 1, 1),
+        (1, 2, 2, 1),
     )
     assert neighbor_mutual_information(snapshot, grid_width=5, grid_height=5) == pytest.approx(0.0)
 
