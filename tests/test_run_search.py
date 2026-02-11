@@ -30,7 +30,13 @@ def test_run_batch_search_writes_json_and_parquet(tmp_path: Path) -> None:
     sim_table = pq.read_table(logs_dir / "simulation_log.parquet")
     metric_table = pq.read_table(logs_dir / "metrics_summary.parquet")
 
-    assert {"rule_id", "step", "agent_id", "x", "y", "state", "action"}.issubset(sim_table.column_names)
-    assert {"rule_id", "step", "state_entropy", "compression_ratio", "predictability_hamming"}.issubset(
-        metric_table.column_names
-    )
+    sim_columns = {"rule_id", "step", "agent_id", "x", "y", "state", "action"}
+    metric_columns = {
+        "rule_id",
+        "step",
+        "state_entropy",
+        "compression_ratio",
+        "predictability_hamming",
+    }
+    assert sim_columns.issubset(sim_table.column_names)
+    assert metric_columns.issubset(metric_table.column_names)
