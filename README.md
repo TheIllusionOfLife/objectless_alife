@@ -47,6 +47,30 @@ uv run python -m src.run_search \
   --out-dir data
 ```
 
+## Run experiment mode (phase comparison)
+
+Run Phase 1 and Phase 2 across multiple seed batches and generate aggregate comparison files:
+
+```bash
+uv run python -m src.run_search \
+  --experiment \
+  --phases 1,2 \
+  --seed-batches 3 \
+  --n-rules 100 \
+  --steps 200 \
+  --out-dir data
+```
+
+`--phases` currently accepts exactly two distinct values (for example `1,2`).
+For safety, very large workloads are rejected when `phases * n_rules * seed_batches * steps` exceeds an internal threshold.
+
+Experiment outputs:
+
+- `data/phase_1/` and `data/phase_2/`: per-phase rule JSON + simulation/metrics parquet
+- `data/logs/experiment_runs.parquet`: per-rule run outcomes across phases
+- `data/logs/phase_summary.parquet`: per-phase aggregate statistics
+- `data/logs/phase_comparison.json`: phase-to-phase absolute/relative deltas
+
 ## Render animation
 
 First run a search so `data/rules/*.json` and `data/logs/*.parquet` exist.

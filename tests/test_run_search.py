@@ -5,7 +5,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from src.rules import ObservationPhase
-from src.run_search import SearchConfig, run_batch_search
+from src.run_search import ExperimentConfig, SearchConfig, main, run_batch_search, run_experiment
 from src.world import WorldConfig
 
 
@@ -165,3 +165,218 @@ def test_run_batch_search_termination_metadata_is_deterministic(tmp_path: Path) 
         metadata_b = payloads_b[rule_id]["metadata"]
         assert metadata_a["terminated_at"] == metadata_b["terminated_at"]
         assert metadata_a["termination_reason"] == metadata_b["termination_reason"]
+
+
+def test_run_experiment_produces_expected_rows_and_artifacts(tmp_path: Path) -> None:
+    results = run_experiment(
+        ExperimentConfig(
+            phases=(ObservationPhase.PHASE1_DENSITY, ObservationPhase.PHASE2_PROFILE),
+            n_rules=3,
+            n_seed_batches=2,
+            out_dir=tmp_path,
+            steps=8,
+            halt_window=3,
+            rule_seed_start=10,
+            sim_seed_start=20,
+        )
+    )
+
+    assert len(results) == 12
+    logs_dir = tmp_path / "logs"
+    assert (logs_dir / "experiment_runs.parquet").exists()
+    assert (logs_dir / "phase_summary.parquet").exists()
+    assert (logs_dir / "phase_comparison.json").exists()
+
+    runs = pq.read_table(logs_dir / "experiment_runs.parquet")
+    rows = runs.to_pylist()
+    assert len(rows) == 12
+    assert {int(row["phase"]) for row in rows} == {1, 2}
+
+
+def test_run_experiment_is_deterministic(tmp_path: Path) -> None:
+    out_a = tmp_path / "a"
+    out_b = tmp_path / "b"
+    config_a = ExperimentConfig(
+        phases=(ObservationPhase.PHASE1_DENSITY, ObservationPhase.PHASE2_PROFILE),
+        n_rules=2,
+        n_seed_batches=2,
+        out_dir=out_a,
+        steps=6,
+        halt_window=3,
+        rule_seed_start=100,
+        sim_seed_start=200,
+    )
+    config_b = ExperimentConfig(
+        phases=(ObservationPhase.PHASE1_DENSITY, ObservationPhase.PHASE2_PROFILE),
+        n_rules=2,
+        n_seed_batches=2,
+        out_dir=out_b,
+        steps=6,
+        halt_window=3,
+        rule_seed_start=100,
+        sim_seed_start=200,
+    )
+
+    run_experiment(config_a)
+    run_experiment(config_b)
+
+    runs_a = pq.read_table(out_a / "logs" / "experiment_runs.parquet").to_pylist()
+    runs_b = pq.read_table(out_b / "logs" / "experiment_runs.parquet").to_pylist()
+    assert runs_a == runs_b
+
+    phase_cmp_a = json.loads((out_a / "logs" / "phase_comparison.json").read_text())
+    phase_cmp_b = json.loads((out_b / "logs" / "phase_comparison.json").read_text())
+    assert phase_cmp_a == phase_cmp_b
+
+
+def test_run_experiment_phase_summary_has_required_columns(tmp_path: Path) -> None:
+    run_experiment(
+        ExperimentConfig(
+            phases=(ObservationPhase.PHASE1_DENSITY, ObservationPhase.PHASE2_PROFILE),
+            n_rules=2,
+            n_seed_batches=1,
+            out_dir=tmp_path,
+            steps=6,
+        )
+    )
+
+    summary = pq.read_table(tmp_path / "logs" / "phase_summary.parquet")
+    expected_columns = {
+        "schema_version",
+        "phase",
+        "rules_evaluated",
+        "survival_rate",
+        "termination_rate",
+        "mean_terminated_at",
+        "state_entropy_mean",
+        "state_entropy_p50",
+        "quasi_periodicity_peaks_mean",
+        "phase_transition_max_delta_mean",
+        "block_ncd_mean",
+    }
+    assert expected_columns.issubset(summary.column_names)
+    assert summary.num_rows == 2
+
+
+def test_run_experiment_phase_comparison_excludes_metadata_delta_keys(tmp_path: Path) -> None:
+    run_experiment(
+        ExperimentConfig(
+            phases=(ObservationPhase.PHASE1_DENSITY, ObservationPhase.PHASE2_PROFILE),
+            n_rules=2,
+            n_seed_batches=1,
+            out_dir=tmp_path,
+            steps=6,
+        )
+    )
+
+    payload = json.loads((tmp_path / "logs" / "phase_comparison.json").read_text())
+    deltas = payload["deltas"]
+    assert "phase" not in deltas
+    assert "schema_version" not in deltas
+
+
+def test_run_search_main_experiment_mode_generates_aggregate_files(tmp_path: Path) -> None:
+    main(
+        [
+            "--experiment",
+            "--phases",
+            "1,2",
+            "--seed-batches",
+            "2",
+            "--n-rules",
+            "2",
+            "--steps",
+            "6",
+            "--out-dir",
+            str(tmp_path),
+        ]
+    )
+
+    logs_dir = tmp_path / "logs"
+    assert (logs_dir / "experiment_runs.parquet").exists()
+    assert (logs_dir / "phase_summary.parquet").exists()
+    assert (logs_dir / "phase_comparison.json").exists()
+
+
+def test_run_search_main_experiment_mode_rejects_more_than_two_phases(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="exactly two"):
+        main(
+            [
+                "--experiment",
+                "--phases",
+                "1,2,1",
+                "--seed-batches",
+                "1",
+                "--n-rules",
+                "1",
+                "--out-dir",
+                str(tmp_path),
+            ]
+        )
+
+
+def test_run_search_main_experiment_mode_rejects_invalid_phase_text(tmp_path: Path) -> None:
+    with pytest.raises(ValueError):
+        main(
+            [
+                "--experiment",
+                "--phases",
+                "x,2",
+                "--seed-batches",
+                "1",
+                "--n-rules",
+                "1",
+                "--out-dir",
+                str(tmp_path),
+            ]
+        )
+
+
+def test_run_experiment_rejects_excessive_total_workload(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="workload"):
+        run_experiment(
+            ExperimentConfig(
+                phases=(ObservationPhase.PHASE1_DENSITY, ObservationPhase.PHASE2_PROFILE),
+                n_rules=10_000,
+                n_seed_batches=1_000,
+                steps=2_000,
+                out_dir=tmp_path,
+            )
+        )
+
+
+def test_run_batch_search_does_not_leave_partial_parquet_files_on_early_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import src.run_search as run_search_module
+
+    def _fail(*args: object, **kwargs: object) -> list[int]:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(run_search_module, "generate_rule_table", _fail)
+    with pytest.raises(RuntimeError, match="boom"):
+        run_batch_search(
+            n_rules=1,
+            phase=ObservationPhase.PHASE1_DENSITY,
+            out_dir=tmp_path,
+            steps=4,
+        )
+
+    assert not (tmp_path / "logs" / "simulation_log.parquet").exists()
+    assert not (tmp_path / "logs" / "metrics_summary.parquet").exists()
+
+
+def test_run_batch_search_metrics_schema_is_stable_when_column_values_are_all_nulls(
+    tmp_path: Path,
+) -> None:
+    run_batch_search(
+        n_rules=1,
+        phase=ObservationPhase.PHASE1_DENSITY,
+        out_dir=tmp_path,
+        config=SearchConfig(steps=3, block_ncd_window=99),
+    )
+
+    metrics = pq.read_table(tmp_path / "logs" / "metrics_summary.parquet")
+    schema = metrics.schema
+    assert str(schema.field("block_ncd").type) == "double"
+    assert str(schema.field("predictability_hamming").type) == "double"
