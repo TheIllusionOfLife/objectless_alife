@@ -100,14 +100,12 @@ class World:
         return self.agents[agent_id]
 
     def snapshot(self) -> tuple[tuple[int, int, int, int], ...]:
-        """Return immutable sorted snapshot of (agent_id, x, y, state)."""
-        return tuple(
-            (a.agent_id, a.x, a.y, a.state) for a in sorted(self.agents, key=lambda a: a.agent_id)
-        )
+        """Return immutable snapshot of (agent_id, x, y, state) in agent-id order."""
+        return tuple((a.agent_id, a.x, a.y, a.state) for a in self.agents)
 
     def state_vector(self) -> list[int]:
         """Return agent states ordered by ascending agent_id."""
-        return [a.state for a in sorted(self.agents, key=lambda a: a.agent_id)]
+        return [a.state for a in self.agents]
 
     def apply_action(self, agent_id: int, action: int) -> None:
         """Apply one action for one agent.

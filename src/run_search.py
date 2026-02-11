@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
+import math
+from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -10,6 +13,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from src.filters import (
+    ACTION_SPACE_SIZE,
     HaltDetector,
     LowActivityDetector,
     ShortPeriodDetector,
@@ -17,8 +21,6 @@ from src.filters import (
     TerminationReason,
 )
 from src.metrics import (
-    action_entropy,
-    action_entropy_variance,
     block_ncd,
     cluster_count_by_state,
     compression_ratio,
@@ -118,6 +120,28 @@ def _deterministic_rule_id(phase: ObservationPhase, rule_seed: int, sim_seed: in
     return f"phase{phase.value}_rs{rule_seed}_ss{sim_seed}"
 
 
+def _entropy_from_action_counts(action_counts: list[int], total_actions: int) -> float:
+    """Compute Shannon entropy from pre-aggregated action counts."""
+    if total_actions < 1:
+        return 0.0
+    entropy = 0.0
+    for count in action_counts:
+        if count == 0:
+            continue
+        p = count / total_actions
+        entropy -= p * math.log2(p)
+    return entropy
+
+
+def _mean_and_pvariance(values: list[float]) -> tuple[float, float]:
+    """Return mean and population variance for non-empty values."""
+    if not values:
+        return 0.0, 0.0
+    mean = sum(values) / len(values)
+    variance = sum((value - mean) ** 2 for value in values) / len(values)
+    return mean, variance
+
+
 def run_batch_search(
     n_rules: int,
     phase: ObservationPhase,
@@ -196,10 +220,39 @@ def run_batch_search(
             termination_reason: str | None = None
             prev_states: list[int] | None = None
             entropy_series: list[float] = []
-            snapshot_bytes_history: list[bytes] = []
-            per_agent_actions: list[list[int]] = [[] for _ in range(world_cfg.num_agents)]
-            per_rule_sim_rows: list[dict[str, int | str]] = []
-            per_rule_metric_rows: list[dict[str, int | str | float | None]] = []
+            block_window = search_config.block_ncd_window
+            snapshot_bytes_window: deque[bytes] | None = (
+                deque(maxlen=block_window * 2) if block_window > 0 else None
+            )
+            per_agent_action_counts: list[list[int]] = [
+                [0] * ACTION_SPACE_SIZE for _ in range(world_cfg.num_agents)
+            ]
+            per_agent_action_totals: list[int] = [0] * world_cfg.num_agents
+            per_agent_entropies: list[float] = [0.0] * world_cfg.num_agents
+            sim_columns: dict[str, list[int | str]] = {
+                "rule_id": [],
+                "step": [],
+                "agent_id": [],
+                "x": [],
+                "y": [],
+                "state": [],
+                "action": [],
+            }
+            metric_columns: dict[str, list[int | str | float | None]] = {
+                "rule_id": [],
+                "step": [],
+                "state_entropy": [],
+                "compression_ratio": [],
+                "predictability_hamming": [],
+                "morans_i": [],
+                "cluster_count": [],
+                "quasi_periodicity_peaks": [],
+                "phase_transition_max_delta": [],
+                "neighbor_mutual_information": [],
+                "action_entropy_mean": [],
+                "action_entropy_variance": [],
+                "block_ncd": [],
+            }
             running_phase_transition_delta = 0.0
             halt_triggered = False
             uniform_triggered = False
@@ -219,9 +272,14 @@ def run_batch_search(
                         running_phase_transition_delta, abs(step_entropy - entropy_series[-1])
                     )
                 entropy_series.append(step_entropy)
-                snapshot_bytes_history.append(snapshot_bytes)
+                if snapshot_bytes_window is not None:
+                    snapshot_bytes_window.append(snapshot_bytes)
                 for agent_id, action in enumerate(actions):
-                    per_agent_actions[agent_id].append(action)
+                    per_agent_action_counts[agent_id][action] += 1
+                    per_agent_action_totals[agent_id] += 1
+                    per_agent_entropies[agent_id] = _entropy_from_action_counts(
+                        per_agent_action_counts[agent_id], per_agent_action_totals[agent_id]
+                    )
 
                 predictability = (
                     None
@@ -229,61 +287,56 @@ def run_batch_search(
                     else normalized_hamming_distance(prev_states, states)
                 )
                 block_ncd_value: float | None = None
-                window = search_config.block_ncd_window
-                if window > 0 and len(snapshot_bytes_history) >= window * 2:
-                    prev_block = b"".join(snapshot_bytes_history[-2 * window : -window])
-                    curr_block = b"".join(snapshot_bytes_history[-window:])
+                if (
+                    snapshot_bytes_window is not None
+                    and len(snapshot_bytes_window) >= block_window * 2
+                ):
+                    windowed = iter(snapshot_bytes_window)
+                    prev_block = b"".join(itertools.islice(windowed, block_window))
+                    curr_block = b"".join(itertools.islice(windowed, block_window))
                     block_ncd_value = block_ncd(prev_block, curr_block)
 
-                per_agent_entropies = [action_entropy(history) for history in per_agent_actions]
-                action_entropy_mean = (
-                    sum(per_agent_entropies) / len(per_agent_entropies)
-                    if per_agent_entropies
-                    else 0.0
-                )
+                action_entropy_mean, action_entropy_var = _mean_and_pvariance(per_agent_entropies)
 
-                per_rule_metric_rows.append(
-                    {
-                        "rule_id": rule_id,
-                        "step": step,
-                        "state_entropy": step_entropy,
-                        "compression_ratio": compression_ratio(snapshot_bytes),
-                        "predictability_hamming": predictability,
-                        "morans_i": morans_i_occupied(
-                            snapshot,
-                            grid_width=world_cfg.grid_width,
-                            grid_height=world_cfg.grid_height,
-                        ),
-                        "cluster_count": cluster_count_by_state(
-                            snapshot,
-                            grid_width=world_cfg.grid_width,
-                            grid_height=world_cfg.grid_height,
-                        ),
-                        "quasi_periodicity_peaks": None,
-                        "phase_transition_max_delta": running_phase_transition_delta,
-                        "neighbor_mutual_information": neighbor_mutual_information(
-                            snapshot,
-                            grid_width=world_cfg.grid_width,
-                            grid_height=world_cfg.grid_height,
-                        ),
-                        "action_entropy_mean": action_entropy_mean,
-                        "action_entropy_variance": action_entropy_variance(per_agent_actions),
-                        "block_ncd": block_ncd_value,
-                    }
+                metric_columns["rule_id"].append(rule_id)
+                metric_columns["step"].append(step)
+                metric_columns["state_entropy"].append(step_entropy)
+                metric_columns["compression_ratio"].append(compression_ratio(snapshot_bytes))
+                metric_columns["predictability_hamming"].append(predictability)
+                metric_columns["morans_i"].append(
+                    morans_i_occupied(
+                        snapshot,
+                        grid_width=world_cfg.grid_width,
+                        grid_height=world_cfg.grid_height,
+                    )
                 )
+                metric_columns["cluster_count"].append(
+                    cluster_count_by_state(
+                        snapshot,
+                        grid_width=world_cfg.grid_width,
+                        grid_height=world_cfg.grid_height,
+                    )
+                )
+                metric_columns["phase_transition_max_delta"].append(running_phase_transition_delta)
+                metric_columns["neighbor_mutual_information"].append(
+                    neighbor_mutual_information(
+                        snapshot,
+                        grid_width=world_cfg.grid_width,
+                        grid_height=world_cfg.grid_height,
+                    )
+                )
+                metric_columns["action_entropy_mean"].append(action_entropy_mean)
+                metric_columns["action_entropy_variance"].append(action_entropy_var)
+                metric_columns["block_ncd"].append(block_ncd_value)
 
                 for agent_id, x, y, state in snapshot:
-                    per_rule_sim_rows.append(
-                        {
-                            "rule_id": rule_id,
-                            "step": step,
-                            "agent_id": agent_id,
-                            "x": x,
-                            "y": y,
-                            "state": state,
-                            "action": actions[agent_id],
-                        }
-                    )
+                    sim_columns["rule_id"].append(rule_id)
+                    sim_columns["step"].append(step)
+                    sim_columns["agent_id"].append(agent_id)
+                    sim_columns["x"].append(x)
+                    sim_columns["y"].append(y)
+                    sim_columns["state"].append(state)
+                    sim_columns["action"].append(actions[agent_id])
 
                 halt_triggered = halt_detector.observe(snapshot)
                 uniform_triggered = uniform_detector.observe(states)
@@ -317,11 +370,12 @@ def run_batch_search(
                 prev_states = states
 
             quasi_periodicity_peaks = quasi_periodicity_peak_count(entropy_series)
-            for row in per_rule_metric_rows:
-                row["quasi_periodicity_peaks"] = quasi_periodicity_peaks
+            metric_columns["quasi_periodicity_peaks"] = [quasi_periodicity_peaks] * len(
+                metric_columns["step"]
+            )
 
-            sim_table = pa.Table.from_pylist(per_rule_sim_rows, schema=SIMULATION_SCHEMA)
-            metric_table = pa.Table.from_pylist(per_rule_metric_rows, schema=METRICS_SCHEMA)
+            sim_table = pa.Table.from_pydict(sim_columns, schema=SIMULATION_SCHEMA)
+            metric_table = pa.Table.from_pydict(metric_columns, schema=METRICS_SCHEMA)
             if sim_writer is None:
                 sim_writer = pq.ParquetWriter(simulation_log_path, SIMULATION_SCHEMA)
             if metric_writer is None:

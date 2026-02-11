@@ -4,8 +4,17 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 
+from src.filters import ACTION_SPACE_SIZE
+from src.metrics import action_entropy
 from src.rules import ObservationPhase
-from src.run_search import ExperimentConfig, SearchConfig, main, run_batch_search, run_experiment
+from src.run_search import (
+    ExperimentConfig,
+    SearchConfig,
+    _entropy_from_action_counts,
+    main,
+    run_batch_search,
+    run_experiment,
+)
 from src.world import WorldConfig
 
 
@@ -380,3 +389,91 @@ def test_run_batch_search_metrics_schema_is_stable_when_column_values_are_all_nu
     schema = metrics.schema
     assert str(schema.field("block_ncd").type) == "double"
     assert str(schema.field("predictability_hamming").type) == "double"
+
+
+def test_entropy_from_action_counts_matches_sequence_entropy() -> None:
+    # We intentionally test this private helper because it encodes the
+    # incremental entropy math used by the hot simulation loop.
+    actions = [0, 0, 1, 8, 8, 8]
+    counts = [0] * ACTION_SPACE_SIZE
+    for action in actions:
+        counts[action] += 1
+
+    assert _entropy_from_action_counts(counts, len(actions)) == pytest.approx(
+        action_entropy(actions)
+    )
+
+
+def test_run_batch_search_fixed_seed_metrics_rows_are_stable(tmp_path: Path) -> None:
+    run_batch_search(
+        n_rules=1,
+        phase=ObservationPhase.PHASE1_DENSITY,
+        out_dir=tmp_path,
+        base_rule_seed=123,
+        base_sim_seed=456,
+        config=SearchConfig(steps=8, halt_window=3, block_ncd_window=4),
+    )
+
+    metrics = pq.read_table(tmp_path / "logs" / "metrics_summary.parquet").to_pylist()
+    assert len(metrics) == 8
+
+    first = metrics[0]
+    assert first["rule_id"] == "phase1_rs123_ss456"
+    assert first["step"] == 0
+    assert first["state_entropy"] == pytest.approx(0.783776947484701)
+    assert first["compression_ratio"] == pytest.approx(0.1525)
+    assert first["predictability_hamming"] is None
+    assert first["morans_i"] == pytest.approx(-0.7391304347826086)
+    assert first["cluster_count"] == 29
+    assert first["quasi_periodicity_peaks"] == 0
+    assert first["phase_transition_max_delta"] == pytest.approx(0.0)
+    assert first["neighbor_mutual_information"] == pytest.approx(0.32192809488736224)
+    assert first["action_entropy_mean"] == pytest.approx(0.0)
+    assert first["action_entropy_variance"] == pytest.approx(0.0)
+    assert first["block_ncd"] is None
+
+    last = metrics[-1]
+    assert last["step"] == 7
+    assert last["state_entropy"] == pytest.approx(0.783776947484701)
+    assert last["compression_ratio"] == pytest.approx(0.1575)
+    assert last["predictability_hamming"] == pytest.approx(0.0)
+    assert last["morans_i"] == pytest.approx(-0.015084294587400132)
+    assert last["cluster_count"] == 27
+    assert last["quasi_periodicity_peaks"] == 0
+    assert last["phase_transition_max_delta"] == pytest.approx(0.3267753036985779)
+    assert last["neighbor_mutual_information"] == pytest.approx(0.005977711423773725)
+    assert last["action_entropy_mean"] == pytest.approx(0.8866142457376974)
+    assert last["action_entropy_variance"] == pytest.approx(0.2869433329132004)
+    assert last["block_ncd"] == pytest.approx(0.8421052631578947)
+
+
+def test_run_batch_search_fixed_seed_simulation_rows_are_stable(tmp_path: Path) -> None:
+    run_batch_search(
+        n_rules=1,
+        phase=ObservationPhase.PHASE1_DENSITY,
+        out_dir=tmp_path,
+        base_rule_seed=123,
+        base_sim_seed=456,
+        config=SearchConfig(steps=8, halt_window=3, block_ncd_window=4),
+    )
+
+    sim = pq.read_table(tmp_path / "logs" / "simulation_log.parquet").to_pylist()
+    assert len(sim) == 240
+    assert sim[0] == {
+        "rule_id": "phase1_rs123_ss456",
+        "step": 0,
+        "agent_id": 0,
+        "x": 14,
+        "y": 13,
+        "state": 0,
+        "action": 0,
+    }
+    assert sim[-1] == {
+        "rule_id": "phase1_rs123_ss456",
+        "step": 7,
+        "agent_id": 29,
+        "x": 14,
+        "y": 19,
+        "state": 1,
+        "action": 1,
+    }

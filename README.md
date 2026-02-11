@@ -71,6 +71,18 @@ Experiment outputs:
 - `data/logs/phase_summary.parquet`: per-phase aggregate statistics
 - `data/logs/phase_comparison.json`: phase-to-phase absolute/relative deltas
 
+## Throughput guidance for large runs
+
+For stable long runs, scale up in stages and keep each invocation within a practical work budget.
+
+- Work-unit formula: `len(phases) * n_rules * seed_batches * steps`
+- Current safety threshold: `100_000_000` work units (runs above this are rejected)
+- Recommended progression:
+  - Debug: `--n-rules 100 --seed-batches 1`
+  - Exploration: `--n-rules 1000 --seed-batches 1-3`
+  - Large sweep: split into multiple invocations by seed ranges instead of one giant run
+- Practical tip: keep `--out-dir` per campaign (for example `data/exp_2026_02_11/`) to avoid mixing artifacts from different parameter sets.
+
 ## Render animation
 
 First run a search so `data/rules/*.json` and `data/logs/*.parquet` exist.
