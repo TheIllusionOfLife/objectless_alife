@@ -1,5 +1,4 @@
 import json
-import sys
 from pathlib import Path
 
 import pyarrow.parquet as pq
@@ -251,20 +250,17 @@ def test_run_experiment_phase_summary_has_required_columns(tmp_path: Path) -> No
         "mean_terminated_at",
         "state_entropy_mean",
         "state_entropy_p50",
+        "quasi_periodicity_peaks_mean",
+        "phase_transition_max_delta_mean",
         "block_ncd_mean",
     }
     assert expected_columns.issubset(summary.column_names)
     assert summary.num_rows == 2
 
 
-def test_run_search_main_experiment_mode_generates_aggregate_files(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(
-        sys,
-        "argv",
+def test_run_search_main_experiment_mode_generates_aggregate_files(tmp_path: Path) -> None:
+    main(
         [
-            "run_search",
             "--experiment",
             "--phases",
             "1,2",
@@ -276,9 +272,8 @@ def test_run_search_main_experiment_mode_generates_aggregate_files(
             "6",
             "--out-dir",
             str(tmp_path),
-        ],
+        ]
     )
-    main()
 
     logs_dir = tmp_path / "logs"
     assert (logs_dir / "experiment_runs.parquet").exists()
@@ -286,50 +281,38 @@ def test_run_search_main_experiment_mode_generates_aggregate_files(
     assert (logs_dir / "phase_comparison.json").exists()
 
 
-def test_run_search_main_experiment_mode_rejects_more_than_two_phases(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "run_search",
-            "--experiment",
-            "--phases",
-            "1,2,1",
-            "--seed-batches",
-            "1",
-            "--n-rules",
-            "1",
-            "--out-dir",
-            str(tmp_path),
-        ],
-    )
+def test_run_search_main_experiment_mode_rejects_more_than_two_phases(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="exactly two"):
-        main()
+        main(
+            [
+                "--experiment",
+                "--phases",
+                "1,2,1",
+                "--seed-batches",
+                "1",
+                "--n-rules",
+                "1",
+                "--out-dir",
+                str(tmp_path),
+            ]
+        )
 
 
-def test_run_search_main_experiment_mode_rejects_invalid_phase_text(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "run_search",
-            "--experiment",
-            "--phases",
-            "x,2",
-            "--seed-batches",
-            "1",
-            "--n-rules",
-            "1",
-            "--out-dir",
-            str(tmp_path),
-        ],
-    )
+def test_run_search_main_experiment_mode_rejects_invalid_phase_text(tmp_path: Path) -> None:
     with pytest.raises(ValueError):
-        main()
+        main(
+            [
+                "--experiment",
+                "--phases",
+                "x,2",
+                "--seed-batches",
+                "1",
+                "--n-rules",
+                "1",
+                "--out-dir",
+                str(tmp_path),
+            ]
+        )
 
 
 def test_run_experiment_rejects_excessive_total_workload(tmp_path: Path) -> None:
@@ -363,3 +346,19 @@ def test_run_batch_search_cleans_temp_chunks_on_failure(
         )
 
     assert not (tmp_path / "logs" / ".tmp_chunks").exists()
+
+
+def test_run_batch_search_metrics_schema_is_stable_when_column_values_are_all_nulls(
+    tmp_path: Path,
+) -> None:
+    run_batch_search(
+        n_rules=1,
+        phase=ObservationPhase.PHASE1_DENSITY,
+        out_dir=tmp_path,
+        config=SearchConfig(steps=3, block_ncd_window=99),
+    )
+
+    metrics = pq.read_table(tmp_path / "logs" / "metrics_summary.parquet")
+    schema = metrics.schema
+    assert str(schema.field("block_ncd").type) == "double"
+    assert str(schema.field("predictability_hamming").type) == "double"

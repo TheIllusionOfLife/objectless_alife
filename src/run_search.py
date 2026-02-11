@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -35,6 +34,34 @@ from src.world import World, WorldConfig
 
 MAX_EXPERIMENT_WORK_UNITS = 100_000_000
 AGGREGATE_SCHEMA_VERSION = 1
+SIMULATION_SCHEMA = pa.schema(
+    [
+        ("rule_id", pa.string()),
+        ("step", pa.int64()),
+        ("agent_id", pa.int64()),
+        ("x", pa.int64()),
+        ("y", pa.int64()),
+        ("state", pa.int64()),
+        ("action", pa.int64()),
+    ]
+)
+METRICS_SCHEMA = pa.schema(
+    [
+        ("rule_id", pa.string()),
+        ("step", pa.int64()),
+        ("state_entropy", pa.float64()),
+        ("compression_ratio", pa.float64()),
+        ("predictability_hamming", pa.float64()),
+        ("morans_i", pa.float64()),
+        ("cluster_count", pa.int64()),
+        ("quasi_periodicity_peaks", pa.int64()),
+        ("phase_transition_max_delta", pa.float64()),
+        ("neighbor_mutual_information", pa.float64()),
+        ("action_entropy_mean", pa.float64()),
+        ("action_entropy_variance", pa.float64()),
+        ("block_ncd", pa.float64()),
+    ]
+)
 
 
 @dataclass(frozen=True)
@@ -131,11 +158,6 @@ def run_batch_search(
     logs_dir = out_dir / "logs"
     rules_dir.mkdir(parents=True, exist_ok=True)
     logs_dir.mkdir(parents=True, exist_ok=True)
-
-    tmp_chunk_dir = logs_dir / ".tmp_chunks"
-    if tmp_chunk_dir.exists():
-        shutil.rmtree(tmp_chunk_dir)
-    tmp_chunk_dir.mkdir(parents=True, exist_ok=True)
 
     sim_writer: pq.ParquetWriter | None = None
     metric_writer: pq.ParquetWriter | None = None
@@ -298,12 +320,12 @@ def run_batch_search(
             for row in per_rule_metric_rows:
                 row["quasi_periodicity_peaks"] = quasi_periodicity_peaks
 
-            sim_table = pa.Table.from_pylist(per_rule_sim_rows)
-            metric_table = pa.Table.from_pylist(per_rule_metric_rows)
+            sim_table = pa.Table.from_pylist(per_rule_sim_rows, schema=SIMULATION_SCHEMA)
+            metric_table = pa.Table.from_pylist(per_rule_metric_rows, schema=METRICS_SCHEMA)
             if sim_writer is None:
-                sim_writer = pq.ParquetWriter(simulation_log_path, sim_table.schema)
+                sim_writer = pq.ParquetWriter(simulation_log_path, SIMULATION_SCHEMA)
             if metric_writer is None:
-                metric_writer = pq.ParquetWriter(metrics_summary_path, metric_table.schema)
+                metric_writer = pq.ParquetWriter(metrics_summary_path, METRICS_SCHEMA)
             sim_writer.write_table(sim_table)
             metric_writer.write_table(metric_table)
 
@@ -351,7 +373,6 @@ def run_batch_search(
             sim_writer.close()
         if metric_writer is not None:
             metric_writer.close()
-        shutil.rmtree(tmp_chunk_dir, ignore_errors=True)
 
     return results
 
@@ -429,6 +450,8 @@ def _build_phase_summary(
         "morans_i",
         "cluster_count",
         "neighbor_mutual_information",
+        "quasi_periodicity_peaks",
+        "phase_transition_max_delta",
         "action_entropy_mean",
         "action_entropy_variance",
         "block_ncd",
@@ -562,18 +585,17 @@ def run_experiment(config: ExperimentConfig) -> list[SimulationResult]:
             "action_entropy_variance",
             "block_ncd",
         ]
-        final_metric_rows: list[dict[str, Any]] = []
-        for result in phase_results:
-            final_step = (
-                result.terminated_at if result.terminated_at is not None else (config.steps - 1)
+        full_rows = pq.read_table(metrics_path, columns=metric_columns).to_pylist()
+        final_steps = {
+            (
+                result.rule_id,
+                (result.terminated_at if result.terminated_at is not None else (config.steps - 1)),
             )
-            rows = pq.read_table(
-                metrics_path,
-                columns=metric_columns,
-                filters=[("rule_id", "=", result.rule_id), ("step", "=", final_step)],
-            ).to_pylist()
-            if rows:
-                final_metric_rows.append(rows[0])
+            for result in phase_results
+        }
+        final_metric_rows = [
+            row for row in full_rows if (str(row["rule_id"]), int(row["step"])) in final_steps
+        ]
 
         phase_run_rows = [row for row in experiment_rows if int(row["phase"]) == phase.value]
         phase_summaries.append(
@@ -602,7 +624,7 @@ def _parse_phase(raw_phase: int) -> ObservationPhase:
         raise ValueError("phase must be 1 or 2") from exc
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     """CLI entrypoint for search execution."""
     parser = argparse.ArgumentParser(description="Run objective-free ALife search")
     parser.add_argument("--phase", type=int, default=1)
@@ -622,7 +644,7 @@ def main() -> None:
     parser.add_argument("--low-activity-window", type=int, default=5)
     parser.add_argument("--low-activity-min-unique-ratio", type=float, default=0.2)
     parser.add_argument("--block-ncd-window", type=int, default=10)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.experiment:
         experiment_config = ExperimentConfig(
