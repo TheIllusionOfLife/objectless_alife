@@ -164,7 +164,7 @@ def test_render_rule_animation_uses_explicit_grid_dimensions(
     assert ax_world.get_xlim() == (-0.5, 19.5)
 
 
-def test_visualize_cli_default_base_dir_accepts_absolute_paths(
+def test_visualize_cli_default_base_dir_rejects_absolute_paths_outside_cwd(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     run_batch_search(
@@ -195,6 +195,45 @@ def test_visualize_cli_default_base_dir_accepts_absolute_paths(
             str(output_path),
             "--fps",
             "2",
+        ],
+    )
+    with pytest.raises(ValueError, match="Path escapes base_dir"):
+        visualize.main()
+
+
+def test_visualize_cli_accepts_absolute_paths_with_explicit_base_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_batch_search(
+        n_rules=1,
+        phase=ObservationPhase.PHASE1_DENSITY,
+        out_dir=tmp_path,
+        steps=4,
+        base_rule_seed=2,
+        base_sim_seed=3,
+    )
+    rule_json = next((tmp_path / "rules").glob("*.json")).resolve()
+    output_path = (tmp_path / "cli_preview.gif").resolve()
+
+    import src.visualize as visualize
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "visualize",
+            "--simulation-log",
+            str((tmp_path / "logs" / "simulation_log.parquet").resolve()),
+            "--metrics-summary",
+            str((tmp_path / "logs" / "metrics_summary.parquet").resolve()),
+            "--rule-json",
+            str(rule_json),
+            "--output",
+            str(output_path),
+            "--fps",
+            "2",
+            "--base-dir",
+            str(tmp_path.resolve()),
         ],
     )
     visualize.main()

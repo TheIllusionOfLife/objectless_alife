@@ -19,6 +19,24 @@ def _resolve_within_base(path: Path, base_dir: Path) -> Path:
     return resolved
 
 
+def _resolve_grid_dimension(
+    explicit: int | None,
+    metadata: dict[str, object],
+    metadata_key: str,
+    rows: list[dict[str, object]],
+    axis_key: str,
+) -> int:
+    """Resolve grid dimension from explicit arg, metadata, then row maxima."""
+    if explicit is not None:
+        return explicit
+
+    from_metadata = metadata.get(metadata_key)
+    if isinstance(from_metadata, int):
+        return from_metadata
+
+    return max(int(row[axis_key]) for row in rows) + 1
+
+
 def render_rule_animation(
     simulation_log_path: Path,
     metrics_summary_path: Path,
@@ -69,23 +87,22 @@ def render_rule_animation(
         raise ValueError(
             f"Missing metrics for steps {missing_metric_steps[:5]} for rule_id={rule_id}"
         )
-    metadata = rule_payload.get("metadata", {})
-
-    resolved_width = grid_width
-    if resolved_width is None and isinstance(metadata, dict):
-        metadata_width = metadata.get("grid_width")
-        if isinstance(metadata_width, int):
-            resolved_width = metadata_width
-    if resolved_width is None:
-        resolved_width = max(int(row["x"]) for row in sim_rows) + 1
-
-    resolved_height = grid_height
-    if resolved_height is None and isinstance(metadata, dict):
-        metadata_height = metadata.get("grid_height")
-        if isinstance(metadata_height, int):
-            resolved_height = metadata_height
-    if resolved_height is None:
-        resolved_height = max(int(row["y"]) for row in sim_rows) + 1
+    raw_metadata = rule_payload.get("metadata")
+    metadata = raw_metadata if isinstance(raw_metadata, dict) else {}
+    resolved_width = _resolve_grid_dimension(
+        explicit=grid_width,
+        metadata=metadata,
+        metadata_key="grid_width",
+        rows=sim_rows,
+        axis_key="x",
+    )
+    resolved_height = _resolve_grid_dimension(
+        explicit=grid_height,
+        metadata=metadata,
+        metadata_key="grid_height",
+        rows=sim_rows,
+        axis_key="y",
+    )
 
     if resolved_width < 1:
         raise ValueError("grid_width must be >= 1")
@@ -145,7 +162,7 @@ def main() -> None:
     parser.add_argument("--rule-json", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--fps", type=int, default=8)
-    parser.add_argument("--base-dir", type=Path, default=None)
+    parser.add_argument("--base-dir", type=Path, default=Path("."))
     parser.add_argument("--grid-width", type=int, default=None)
     parser.add_argument("--grid-height", type=int, default=None)
     args = parser.parse_args()
