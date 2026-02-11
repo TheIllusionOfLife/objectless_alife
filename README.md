@@ -53,6 +53,19 @@ uv run python -m src.run_search \
   --out-dir data
 ```
 
+Run a density sweep across explicit grid/agent points (both phases):
+
+```bash
+uv run python -m src.run_search \
+  --density-sweep \
+  --grid-sizes 20x20,30x30 \
+  --agent-counts 30,60 \
+  --seed-batches 2 \
+  --n-rules 100 \
+  --steps 200 \
+  --out-dir data
+```
+
 Render an animation from generated artifacts:
 
 ```bash
@@ -91,6 +104,9 @@ By default, runs produce:
 - `data/logs/experiment_runs.parquet`: per-rule aggregate outcomes (experiment mode)
 - `data/logs/phase_summary.parquet`: per-phase aggregates (experiment mode)
 - `data/logs/phase_comparison.json`: phase delta summary (experiment mode)
+- `data/logs/density_sweep_runs.parquet`: per-rule aggregate outcomes (density sweep mode)
+- `data/logs/density_phase_summary.parquet`: per-density/per-phase aggregates (density sweep mode)
+- `data/logs/density_phase_comparison.parquet`: phase deltas for each density point (density sweep mode)
 
 ## Development Workflow
 

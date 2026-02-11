@@ -8,11 +8,14 @@ from src.filters import ACTION_SPACE_SIZE
 from src.metrics import action_entropy
 from src.rules import ObservationPhase
 from src.run_search import (
+    DensitySweepConfig,
     ExperimentConfig,
     SearchConfig,
     _entropy_from_action_counts,
+    _parse_grid_sizes,
     main,
     run_batch_search,
+    run_density_sweep,
     run_experiment,
 )
 from src.world import WorldConfig
@@ -477,3 +480,109 @@ def test_run_batch_search_fixed_seed_simulation_rows_are_stable(tmp_path: Path) 
         "state": 1,
         "action": 1,
     }
+
+
+def test_parse_grid_sizes_accepts_multiple_pairs() -> None:
+    assert _parse_grid_sizes("5x7,20x20") == ((5, 7), (20, 20))
+
+
+@pytest.mark.parametrize("raw", ["", "20", "20x", "x20", "0x20", "20x0", "-1x20", "20X20"])
+def test_parse_grid_sizes_rejects_invalid_values(raw: str) -> None:
+    with pytest.raises(ValueError):
+        _parse_grid_sizes(raw)
+
+
+def test_run_density_sweep_produces_expected_rows_and_artifacts(tmp_path: Path) -> None:
+    results = run_density_sweep(
+        DensitySweepConfig(
+            grid_sizes=((5, 5),),
+            agent_counts=(3, 5),
+            n_rules=2,
+            n_seed_batches=1,
+            out_dir=tmp_path,
+            steps=6,
+            halt_window=3,
+            rule_seed_start=10,
+            sim_seed_start=20,
+        )
+    )
+
+    assert len(results) == 8
+
+    logs_dir = tmp_path / "logs"
+    assert (logs_dir / "density_sweep_runs.parquet").exists()
+    assert (logs_dir / "density_phase_summary.parquet").exists()
+    assert (logs_dir / "density_phase_comparison.parquet").exists()
+
+    runs = pq.read_table(logs_dir / "density_sweep_runs.parquet").to_pylist()
+    assert len(runs) == 8
+    assert {int(row["phase"]) for row in runs} == {1, 2}
+    assert {int(row["num_agents"]) for row in runs} == {3, 5}
+    assert {float(row["density_ratio"]) for row in runs} == {0.12, 0.2}
+
+
+def test_run_density_sweep_is_deterministic(tmp_path: Path) -> None:
+    out_a = tmp_path / "a"
+    out_b = tmp_path / "b"
+    config_a = DensitySweepConfig(
+        grid_sizes=((5, 5),),
+        agent_counts=(3, 5),
+        n_rules=1,
+        n_seed_batches=1,
+        out_dir=out_a,
+        steps=5,
+        halt_window=3,
+        rule_seed_start=100,
+        sim_seed_start=200,
+    )
+    config_b = DensitySweepConfig(
+        grid_sizes=((5, 5),),
+        agent_counts=(3, 5),
+        n_rules=1,
+        n_seed_batches=1,
+        out_dir=out_b,
+        steps=5,
+        halt_window=3,
+        rule_seed_start=100,
+        sim_seed_start=200,
+    )
+
+    run_density_sweep(config_a)
+    run_density_sweep(config_b)
+
+    runs_a = pq.read_table(out_a / "logs" / "density_sweep_runs.parquet").to_pylist()
+    runs_b = pq.read_table(out_b / "logs" / "density_sweep_runs.parquet").to_pylist()
+    assert runs_a == runs_b
+
+    summary_a = pq.read_table(out_a / "logs" / "density_phase_summary.parquet").to_pylist()
+    summary_b = pq.read_table(out_b / "logs" / "density_phase_summary.parquet").to_pylist()
+    assert summary_a == summary_b
+
+    cmp_a = pq.read_table(out_a / "logs" / "density_phase_comparison.parquet").to_pylist()
+    cmp_b = pq.read_table(out_b / "logs" / "density_phase_comparison.parquet").to_pylist()
+    assert cmp_a == cmp_b
+
+
+def test_run_search_main_density_sweep_mode_generates_aggregate_files(tmp_path: Path) -> None:
+    main(
+        [
+            "--density-sweep",
+            "--grid-sizes",
+            "5x5",
+            "--agent-counts",
+            "3,5",
+            "--n-rules",
+            "1",
+            "--seed-batches",
+            "1",
+            "--steps",
+            "5",
+            "--out-dir",
+            str(tmp_path),
+        ]
+    )
+
+    logs_dir = tmp_path / "logs"
+    assert (logs_dir / "density_sweep_runs.parquet").exists()
+    assert (logs_dir / "density_phase_summary.parquet").exists()
+    assert (logs_dir / "density_phase_comparison.parquet").exists()

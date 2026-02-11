@@ -36,6 +36,7 @@ from src.world import World, WorldConfig
 
 MAX_EXPERIMENT_WORK_UNITS = 100_000_000
 AGGREGATE_SCHEMA_VERSION = 1
+DENSITY_SWEEP_SCHEMA_VERSION = 1
 SIMULATION_SCHEMA = pa.schema(
     [
         ("rule_id", pa.string()),
@@ -62,6 +63,37 @@ METRICS_SCHEMA = pa.schema(
         ("action_entropy_mean", pa.float64()),
         ("action_entropy_variance", pa.float64()),
         ("block_ncd", pa.float64()),
+    ]
+)
+DENSITY_SWEEP_RUNS_SCHEMA = pa.schema(
+    [
+        ("schema_version", pa.int64()),
+        ("rule_id", pa.string()),
+        ("phase", pa.int64()),
+        ("grid_width", pa.int64()),
+        ("grid_height", pa.int64()),
+        ("num_agents", pa.int64()),
+        ("density_ratio", pa.float64()),
+        ("seed_batch", pa.int64()),
+        ("rule_seed", pa.int64()),
+        ("sim_seed", pa.int64()),
+        ("survived", pa.bool_()),
+        ("termination_reason", pa.string()),
+        ("terminated_at", pa.int64()),
+    ]
+)
+DENSITY_PHASE_COMPARISON_SCHEMA = pa.schema(
+    [
+        ("schema_version", pa.int64()),
+        ("base_phase", pa.int64()),
+        ("target_phase", pa.int64()),
+        ("grid_width", pa.int64()),
+        ("grid_height", pa.int64()),
+        ("num_agents", pa.int64()),
+        ("density_ratio", pa.float64()),
+        ("metric", pa.string()),
+        ("delta_absolute", pa.float64()),
+        ("delta_relative", pa.float64()),
     ]
 )
 
@@ -99,6 +131,28 @@ class ExperimentConfig:
         ObservationPhase.PHASE1_DENSITY,
         ObservationPhase.PHASE2_PROFILE,
     )
+    n_rules: int = 100
+    n_seed_batches: int = 1
+    out_dir: Path = Path("data")
+    steps: int = 200
+    halt_window: int = 10
+    rule_seed_start: int = 0
+    sim_seed_start: int = 0
+    filter_short_period: bool = False
+    short_period_max_period: int = 2
+    short_period_history_size: int = 8
+    filter_low_activity: bool = False
+    low_activity_window: int = 5
+    low_activity_min_unique_ratio: float = 0.2
+    block_ncd_window: int = 10
+
+
+@dataclass(frozen=True)
+class DensitySweepConfig:
+    """Runtime settings for grid/agent density sweeps across both phases."""
+
+    grid_sizes: tuple[tuple[int, int], ...] = ((20, 20),)
+    agent_counts: tuple[int, ...] = (30,)
     n_rules: int = 100
     n_seed_batches: int = 1
     out_dir: Path = Path("data")
@@ -452,6 +506,47 @@ def _parse_phase_list(raw_phases: str) -> tuple[ObservationPhase, ...]:
     return tuple(phases)
 
 
+def _parse_grid_sizes(raw_grid_sizes: str) -> tuple[tuple[int, int], ...]:
+    """Parse comma-delimited grid sizes formatted as `WxH`."""
+    parts = [part.strip() for part in raw_grid_sizes.split(",") if part.strip()]
+    if not parts:
+        raise ValueError("grid-sizes must not be empty")
+
+    grid_sizes: list[tuple[int, int]] = []
+    for part in parts:
+        tokens = part.split("x")
+        if len(tokens) != 2:
+            raise ValueError("grid-sizes entries must use WxH format")
+        width_raw, height_raw = tokens
+        try:
+            width = int(width_raw)
+            height = int(height_raw)
+        except ValueError as exc:
+            raise ValueError("grid-sizes entries must use integer WxH values") from exc
+        if width < 1 or height < 1:
+            raise ValueError("grid-sizes entries must be >= 1x1")
+        grid_sizes.append((width, height))
+    return tuple(grid_sizes)
+
+
+def _parse_positive_int_csv(raw_values: str, label: str) -> tuple[int, ...]:
+    """Parse comma-delimited positive integers."""
+    parts = [part.strip() for part in raw_values.split(",") if part.strip()]
+    if not parts:
+        raise ValueError(f"{label} must not be empty")
+
+    values: list[int] = []
+    for part in parts:
+        try:
+            value = int(part)
+        except ValueError as exc:
+            raise ValueError(f"{label} must contain integers") from exc
+        if value < 1:
+            raise ValueError(f"{label} values must be >= 1")
+        values.append(value)
+    return tuple(values)
+
+
 def _percentile_pre_sorted(sorted_values: list[float], q: float) -> float | None:
     """Compute percentile in [0, 1] with linear interpolation on pre-sorted values."""
     if not sorted_values:
@@ -580,6 +675,210 @@ def _collect_final_metric_rows(
                 continue
             final_rows.append({name: batch_dict[name][idx] for name in metric_columns})
     return final_rows
+
+
+def _make_density_phase_summary_rows_table(rows: list[dict[str, Any]]) -> pa.Table:
+    """Build density phase summary table with stable column order and types."""
+    if not rows:
+        return pa.Table.from_pylist(rows)
+
+    schema_fields = []
+    for name in rows[0]:
+        if name in {
+            "schema_version",
+            "phase",
+            "rules_evaluated",
+            "grid_width",
+            "grid_height",
+            "num_agents",
+        }:
+            schema_fields.append((name, pa.int64()))
+        elif name == "density_ratio":
+            schema_fields.append((name, pa.float64()))
+        else:
+            schema_fields.append((name, pa.float64()))
+
+    schema = pa.schema(schema_fields)
+    return pa.Table.from_pylist(rows, schema=schema)
+
+
+def run_density_sweep(config: DensitySweepConfig) -> list[SimulationResult]:
+    """Run explicit grid/agent sweeps across both observation phases."""
+    if config.n_rules < 1:
+        raise ValueError("n_rules must be >= 1")
+    if config.n_seed_batches < 1:
+        raise ValueError("n_seed_batches must be >= 1")
+    if config.steps < 1:
+        raise ValueError("steps must be >= 1")
+    if not config.grid_sizes:
+        raise ValueError("grid_sizes must not be empty")
+    if not config.agent_counts:
+        raise ValueError("agent_counts must not be empty")
+
+    density_points = len(config.grid_sizes) * len(config.agent_counts)
+    total_work_units = density_points * 2 * config.n_rules * config.n_seed_batches * config.steps
+    if total_work_units > MAX_EXPERIMENT_WORK_UNITS:
+        raise ValueError(
+            "density sweep workload exceeds safety threshold; reduce grid-sizes/agent-counts/"
+            "n-rules/seed-batches/steps"
+        )
+
+    out_dir = Path(config.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    root_logs_dir = out_dir / "logs"
+    root_logs_dir.mkdir(parents=True, exist_ok=True)
+
+    all_results: list[SimulationResult] = []
+    sweep_rows: list[dict[str, Any]] = []
+    density_phase_summary_rows: list[dict[str, Any]] = []
+    density_phase_comparison_rows: list[dict[str, Any]] = []
+
+    total_rules_per_phase = config.n_rules * config.n_seed_batches
+    phases = (ObservationPhase.PHASE1_DENSITY, ObservationPhase.PHASE2_PROFILE)
+
+    for grid_width, grid_height in config.grid_sizes:
+        if grid_width < 1 or grid_height < 1:
+            raise ValueError("grid dimensions must be >= 1")
+        max_cells = grid_width * grid_height
+        for num_agents in config.agent_counts:
+            if num_agents > max_cells:
+                raise ValueError(
+                    f"num_agents ({num_agents}) cannot exceed grid cells ({max_cells}) for "
+                    f"{grid_width}x{grid_height}"
+                )
+            density_ratio = num_agents / max_cells
+            per_density_phase_summaries: list[dict[str, Any]] = []
+
+            for phase in phases:
+                phase_out_dir = (
+                    out_dir
+                    / f"density_w{grid_width}_h{grid_height}_a{num_agents}"
+                    / f"phase_{phase.value}"
+                )
+                phase_out_dir.mkdir(parents=True, exist_ok=True)
+
+                phase_search_config = SearchConfig(
+                    steps=config.steps,
+                    halt_window=config.halt_window,
+                    filter_short_period=config.filter_short_period,
+                    short_period_max_period=config.short_period_max_period,
+                    short_period_history_size=config.short_period_history_size,
+                    filter_low_activity=config.filter_low_activity,
+                    low_activity_window=config.low_activity_window,
+                    low_activity_min_unique_ratio=config.low_activity_min_unique_ratio,
+                    block_ncd_window=config.block_ncd_window,
+                )
+                phase_world_config = WorldConfig(
+                    grid_width=grid_width,
+                    grid_height=grid_height,
+                    num_agents=num_agents,
+                    steps=config.steps,
+                )
+                phase_results = run_batch_search(
+                    n_rules=total_rules_per_phase,
+                    phase=phase,
+                    out_dir=phase_out_dir,
+                    base_rule_seed=config.rule_seed_start,
+                    base_sim_seed=config.sim_seed_start,
+                    world_config=phase_world_config,
+                    config=phase_search_config,
+                )
+                all_results.extend(phase_results)
+
+                current_phase_run_rows: list[dict[str, Any]] = []
+                for i, result in enumerate(phase_results):
+                    seed_batch = i // config.n_rules
+                    rule_seed = config.rule_seed_start + i
+                    sim_seed = config.sim_seed_start + i
+                    row = {
+                        "schema_version": DENSITY_SWEEP_SCHEMA_VERSION,
+                        "rule_id": result.rule_id,
+                        "phase": phase.value,
+                        "grid_width": grid_width,
+                        "grid_height": grid_height,
+                        "num_agents": num_agents,
+                        "density_ratio": density_ratio,
+                        "seed_batch": seed_batch,
+                        "rule_seed": rule_seed,
+                        "sim_seed": sim_seed,
+                        "survived": result.survived,
+                        "termination_reason": result.termination_reason,
+                        "terminated_at": result.terminated_at,
+                    }
+                    current_phase_run_rows.append(row)
+                sweep_rows.extend(current_phase_run_rows)
+
+                metrics_path = phase_out_dir / "logs" / "metrics_summary.parquet"
+                metric_columns = [
+                    "rule_id",
+                    "step",
+                    "state_entropy",
+                    "compression_ratio",
+                    "predictability_hamming",
+                    "morans_i",
+                    "cluster_count",
+                    "neighbor_mutual_information",
+                    "quasi_periodicity_peaks",
+                    "phase_transition_max_delta",
+                    "action_entropy_mean",
+                    "action_entropy_variance",
+                    "block_ncd",
+                ]
+                final_metric_rows = _collect_final_metric_rows(
+                    metrics_path=metrics_path,
+                    metric_columns=metric_columns,
+                    phase_results=phase_results,
+                    default_final_step=config.steps - 1,
+                )
+                summary_row = _build_phase_summary(
+                    phase=phase,
+                    run_rows=current_phase_run_rows,
+                    final_metric_rows=final_metric_rows,
+                )
+                summary_row["schema_version"] = DENSITY_SWEEP_SCHEMA_VERSION
+                summary_row["grid_width"] = grid_width
+                summary_row["grid_height"] = grid_height
+                summary_row["num_agents"] = num_agents
+                summary_row["density_ratio"] = density_ratio
+                density_phase_summary_rows.append(summary_row)
+                per_density_phase_summaries.append(summary_row)
+
+            comparison_payload = _build_phase_comparison(per_density_phase_summaries)
+            base_phase = comparison_payload["phases"][0]
+            target_phase = comparison_payload["phases"][1]
+            for metric, deltas in comparison_payload["deltas"].items():
+                density_phase_comparison_rows.append(
+                    {
+                        "schema_version": DENSITY_SWEEP_SCHEMA_VERSION,
+                        "base_phase": base_phase,
+                        "target_phase": target_phase,
+                        "grid_width": grid_width,
+                        "grid_height": grid_height,
+                        "num_agents": num_agents,
+                        "density_ratio": density_ratio,
+                        "metric": metric,
+                        "delta_absolute": deltas["absolute"],
+                        "delta_relative": deltas["relative"],
+                    }
+                )
+
+    pq.write_table(
+        pa.Table.from_pylist(sweep_rows, schema=DENSITY_SWEEP_RUNS_SCHEMA),
+        root_logs_dir / "density_sweep_runs.parquet",
+    )
+    pq.write_table(
+        _make_density_phase_summary_rows_table(density_phase_summary_rows),
+        root_logs_dir / "density_phase_summary.parquet",
+    )
+    pq.write_table(
+        pa.Table.from_pylist(
+            density_phase_comparison_rows,
+            schema=DENSITY_PHASE_COMPARISON_SCHEMA,
+        ),
+        root_logs_dir / "density_phase_comparison.parquet",
+    )
+
+    return all_results
 
 
 def run_experiment(config: ExperimentConfig) -> list[SimulationResult]:
@@ -713,6 +1012,9 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--rule-seed", type=int, default=0)
     parser.add_argument("--sim-seed", type=int, default=0)
     parser.add_argument("--out-dir", type=Path, default=Path("data"))
+    parser.add_argument("--density-sweep", action="store_true")
+    parser.add_argument("--grid-sizes", type=str, default="20x20")
+    parser.add_argument("--agent-counts", type=str, default="30")
     parser.add_argument("--experiment", action="store_true")
     parser.add_argument("--seed-batches", type=int, default=1)
     parser.add_argument("--phases", type=str, default="1,2")
@@ -725,7 +1027,36 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--block-ncd-window", type=int, default=10)
     args = parser.parse_args(argv)
 
-    if args.experiment:
+    if args.density_sweep:
+        density_sweep_config = DensitySweepConfig(
+            grid_sizes=_parse_grid_sizes(args.grid_sizes),
+            agent_counts=_parse_positive_int_csv(args.agent_counts, "agent-counts"),
+            n_rules=args.n_rules,
+            n_seed_batches=args.seed_batches,
+            out_dir=args.out_dir,
+            steps=args.steps,
+            halt_window=args.halt_window,
+            rule_seed_start=args.rule_seed,
+            sim_seed_start=args.sim_seed,
+            filter_short_period=args.filter_short_period,
+            short_period_max_period=args.short_period_max_period,
+            short_period_history_size=args.short_period_history_size,
+            filter_low_activity=args.filter_low_activity,
+            low_activity_window=args.low_activity_window,
+            low_activity_min_unique_ratio=args.low_activity_min_unique_ratio,
+            block_ncd_window=args.block_ncd_window,
+        )
+        results = run_density_sweep(density_sweep_config)
+        summary = {
+            "mode": "density_sweep",
+            "phases": [1, 2],
+            "density_points": len(density_sweep_config.grid_sizes)
+            * len(density_sweep_config.agent_counts),
+            "total_rules": len(results),
+            "survived": sum(1 for r in results if r.survived),
+            "terminated": sum(1 for r in results if not r.survived),
+        }
+    elif args.experiment:
         experiment_config = ExperimentConfig(
             phases=_parse_phase_list(args.phases),
             n_rules=args.n_rules,

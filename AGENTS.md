@@ -35,6 +35,12 @@ uv run python -m src.run_search --phase 1 --n-rules 100 --out-dir data
 uv run python -m src.run_search --experiment --phases 1,2 --seed-batches 3 --n-rules 100 --steps 200 --out-dir data
 ```
 
+- Density sweep mode (explicit grid/agent combinations across both phases):
+
+```bash
+uv run python -m src.run_search --density-sweep --grid-sizes 20x20,30x30 --agent-counts 30,60 --seed-batches 2 --n-rules 100 --steps 200 --out-dir data
+```
+
 - Visualization CLI:
 
 ```bash
