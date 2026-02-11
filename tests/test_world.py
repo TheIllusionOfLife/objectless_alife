@@ -95,3 +95,22 @@ def test_apply_action_rejects_invalid_action() -> None:
 
     with pytest.raises(ValueError):
         world.apply_action(agent_id=0, action=9)
+
+
+def test_snapshot_and_state_vector_do_not_depend_on_sorted_builtin(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = WorldConfig(grid_width=5, grid_height=5, num_agents=2, steps=1)
+    world = World.from_agents(
+        config,
+        [Agent(agent_id=0, x=1, y=1, state=2), Agent(agent_id=1, x=2, y=2, state=3)],
+        sim_seed=1,
+    )
+
+    def _raise_sorted(*args: object, **kwargs: object) -> object:
+        raise AssertionError("sorted must not be called")
+
+    monkeypatch.setattr("builtins.sorted", _raise_sorted)
+
+    assert world.snapshot() == ((0, 1, 1, 2), (1, 2, 2, 3))
+    assert world.state_vector() == [2, 3]

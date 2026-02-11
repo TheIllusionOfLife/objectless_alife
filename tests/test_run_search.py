@@ -4,8 +4,16 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 
+from src.metrics import action_entropy
 from src.rules import ObservationPhase
-from src.run_search import ExperimentConfig, SearchConfig, main, run_batch_search, run_experiment
+from src.run_search import (
+    ExperimentConfig,
+    SearchConfig,
+    _entropy_from_action_counts,
+    main,
+    run_batch_search,
+    run_experiment,
+)
 from src.world import WorldConfig
 
 
@@ -380,3 +388,14 @@ def test_run_batch_search_metrics_schema_is_stable_when_column_values_are_all_nu
     schema = metrics.schema
     assert str(schema.field("block_ncd").type) == "double"
     assert str(schema.field("predictability_hamming").type) == "double"
+
+
+def test_entropy_from_action_counts_matches_sequence_entropy() -> None:
+    actions = [0, 0, 1, 8, 8, 8]
+    counts = [0] * 9
+    for action in actions:
+        counts[action] += 1
+
+    assert _entropy_from_action_counts(counts, len(actions)) == pytest.approx(
+        action_entropy(actions)
+    )
