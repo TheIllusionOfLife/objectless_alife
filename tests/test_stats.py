@@ -1,0 +1,314 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pyarrow as pa
+import pyarrow.parquet as pq
+import pytest
+
+from src.run_search import METRICS_SCHEMA, PHASE_SUMMARY_METRIC_NAMES
+from src.stats import (
+    load_final_step_metrics,
+    phase_comparison_tests,
+    run_statistical_analysis,
+    save_results,
+    survival_rate_test,
+)
+
+
+def _write_metrics_parquet(path: Path, rows: list[dict]) -> None:
+    """Helper to write a metrics_summary.parquet with the canonical schema."""
+    table = pa.Table.from_pylist(rows, schema=METRICS_SCHEMA)
+    pq.write_table(table, path)
+
+
+def _make_metric_row(
+    rule_id: str,
+    step: int,
+    *,
+    neighbor_mi: float = 0.1,
+    state_entropy: float = 1.0,
+) -> dict:
+    """Build a single metrics row with sensible defaults."""
+    return {
+        "rule_id": rule_id,
+        "step": step,
+        "state_entropy": state_entropy,
+        "compression_ratio": 0.5,
+        "predictability_hamming": 0.1 if step > 0 else None,
+        "morans_i": 0.0,
+        "cluster_count": 10,
+        "quasi_periodicity_peaks": 0,
+        "phase_transition_max_delta": 0.01,
+        "neighbor_mutual_information": neighbor_mi,
+        "action_entropy_mean": 0.5,
+        "action_entropy_variance": 0.01,
+        "block_ncd": 0.3 if step >= 20 else None,
+    }
+
+
+class TestLoadFinalStepMetrics:
+    def test_returns_one_row_per_rule(self, tmp_path: Path) -> None:
+        rows = [
+            _make_metric_row("rule_a", 0),
+            _make_metric_row("rule_a", 1),
+            _make_metric_row("rule_a", 2),
+            _make_metric_row("rule_b", 0),
+            _make_metric_row("rule_b", 1),
+        ]
+        path = tmp_path / "metrics_summary.parquet"
+        _write_metrics_parquet(path, rows)
+
+        result = load_final_step_metrics(path)
+        assert result.num_rows == 2
+
+    def test_selects_max_step_per_rule(self, tmp_path: Path) -> None:
+        rows = [
+            _make_metric_row("rule_a", 0, neighbor_mi=0.1),
+            _make_metric_row("rule_a", 5, neighbor_mi=0.9),
+            _make_metric_row("rule_a", 3, neighbor_mi=0.5),
+        ]
+        path = tmp_path / "metrics_summary.parquet"
+        _write_metrics_parquet(path, rows)
+
+        result = load_final_step_metrics(path)
+        assert result.num_rows == 1
+        nmi_values = result.column("neighbor_mutual_information").to_pylist()
+        assert nmi_values[0] == pytest.approx(0.9)
+
+
+class TestPhaseComparisonTests:
+    def _make_table(self, values: list[float], metric: str = "neighbor_mutual_information"):
+        """Build a single-column pyarrow table for testing."""
+        data = {m: [None] * len(values) for m in PHASE_SUMMARY_METRIC_NAMES}
+        data[metric] = values
+        return pa.table(data)
+
+    def test_returns_dict_with_expected_keys(self) -> None:
+        p1 = self._make_table([0.1, 0.2, 0.3])
+        p2 = self._make_table([0.4, 0.5, 0.6])
+        result = phase_comparison_tests(p1, p2, ["neighbor_mutual_information"])
+        assert "neighbor_mutual_information" in result
+
+    def test_result_contains_required_fields(self) -> None:
+        p1 = self._make_table([0.1, 0.2, 0.3])
+        p2 = self._make_table([0.4, 0.5, 0.6])
+        result = phase_comparison_tests(p1, p2, ["neighbor_mutual_information"])
+        entry = result["neighbor_mutual_information"]
+        assert "u_statistic" in entry
+        assert "p_value" in entry
+        assert "effect_size_r" in entry
+        assert "n_phase1" in entry
+        assert "n_phase2" in entry
+        assert "phase1_median" in entry
+        assert "phase2_median" in entry
+
+    def test_p_value_in_valid_range(self) -> None:
+        p1 = self._make_table([0.1, 0.2, 0.3, 0.15, 0.25])
+        p2 = self._make_table([0.4, 0.5, 0.6, 0.45, 0.55])
+        result = phase_comparison_tests(p1, p2, ["neighbor_mutual_information"])
+        entry = result["neighbor_mutual_information"]
+        assert 0.0 <= entry["p_value"] <= 1.0
+
+    def test_effect_size_in_valid_range(self) -> None:
+        p1 = self._make_table([0.1, 0.2, 0.3, 0.15, 0.25])
+        p2 = self._make_table([0.4, 0.5, 0.6, 0.45, 0.55])
+        result = phase_comparison_tests(p1, p2, ["neighbor_mutual_information"])
+        entry = result["neighbor_mutual_information"]
+        assert -1.0 <= entry["effect_size_r"] <= 1.0
+
+    def test_clearly_different_distributions_yield_small_p(self) -> None:
+        p1 = self._make_table([float(x) for x in range(100)])
+        p2 = self._make_table([float(x + 1000) for x in range(100)])
+        result = phase_comparison_tests(p1, p2, ["neighbor_mutual_information"])
+        assert result["neighbor_mutual_information"]["p_value"] < 0.05
+
+    def test_identical_distributions_yield_large_p(self) -> None:
+        values = [float(x) for x in range(50)]
+        p1 = self._make_table(values)
+        p2 = self._make_table(values)
+        result = phase_comparison_tests(p1, p2, ["neighbor_mutual_information"])
+        assert result["neighbor_mutual_information"]["p_value"] > 0.05
+
+    def test_skips_metrics_with_all_nulls(self) -> None:
+        p1 = self._make_table([None] * 10, metric="block_ncd")
+        p2 = self._make_table([None] * 10, metric="block_ncd")
+        result = phase_comparison_tests(p1, p2, ["block_ncd"])
+        assert "block_ncd" not in result
+
+    def test_multiple_metrics(self) -> None:
+        data1 = {m: [0.1, 0.2, 0.3] for m in PHASE_SUMMARY_METRIC_NAMES}
+        data2 = {m: [0.4, 0.5, 0.6] for m in PHASE_SUMMARY_METRIC_NAMES}
+        p1 = pa.table(data1)
+        p2 = pa.table(data2)
+        result = phase_comparison_tests(p1, p2, PHASE_SUMMARY_METRIC_NAMES)
+        assert len(result) == len(PHASE_SUMMARY_METRIC_NAMES)
+
+
+class TestSurvivalRateTest:
+    def test_returns_expected_fields(self) -> None:
+        runs = pa.table(
+            {
+                "phase": [1, 1, 1, 2, 2, 2],
+                "survived": [True, True, False, True, False, False],
+            }
+        )
+        result = survival_rate_test(runs)
+        assert "chi2" in result
+        assert "p_value" in result
+        assert "phase1_survived" in result
+        assert "phase1_total" in result
+        assert "phase2_survived" in result
+        assert "phase2_total" in result
+
+    def test_p_value_in_valid_range(self) -> None:
+        runs = pa.table(
+            {
+                "phase": [1] * 100 + [2] * 100,
+                "survived": [True] * 80 + [False] * 20 + [True] * 30 + [False] * 70,
+            }
+        )
+        result = survival_rate_test(runs)
+        assert 0.0 <= result["p_value"] <= 1.0
+
+    def test_very_different_rates_yield_small_p(self) -> None:
+        runs = pa.table(
+            {
+                "phase": [1] * 200 + [2] * 200,
+                "survived": [True] * 190 + [False] * 10 + [True] * 50 + [False] * 150,
+            }
+        )
+        result = survival_rate_test(runs)
+        assert result["p_value"] < 0.05
+
+
+class TestSaveResults:
+    def test_writes_valid_json(self, tmp_path: Path) -> None:
+        results = {
+            "generated_at": "2026-01-01T00:00:00",
+            "metric_tests": {},
+            "survival_test": {},
+        }
+        out = tmp_path / "statistical_tests.json"
+        save_results(results, out)
+        loaded = json.loads(out.read_text())
+        assert loaded["generated_at"] == "2026-01-01T00:00:00"
+
+
+class TestRunStatisticalAnalysis:
+    def test_end_to_end_with_synthetic_data(self, tmp_path: Path) -> None:
+        """Build a minimal two-phase dataset and verify full pipeline."""
+        # Create directory structure matching run_experiment output
+        logs_dir = tmp_path / "logs"
+        logs_dir.mkdir()
+        p1_logs = tmp_path / "phase_1" / "logs"
+        p2_logs = tmp_path / "phase_2" / "logs"
+        p1_logs.mkdir(parents=True)
+        p2_logs.mkdir(parents=True)
+
+        # experiment_runs.parquet
+        n = 20
+        runs_rows = []
+        for i in range(n):
+            runs_rows.append(
+                {
+                    "schema_version": 1,
+                    "rule_id": f"phase1_rs{i}_ss{i}",
+                    "phase": 1,
+                    "seed_batch": 0,
+                    "rule_seed": i,
+                    "sim_seed": i,
+                    "survived": i < 18,
+                    "termination_reason": None if i < 18 else "halt",
+                    "terminated_at": None if i < 18 else 100,
+                }
+            )
+            runs_rows.append(
+                {
+                    "schema_version": 1,
+                    "rule_id": f"phase2_rs{i}_ss{i}",
+                    "phase": 2,
+                    "seed_batch": 0,
+                    "rule_seed": i,
+                    "sim_seed": i,
+                    "survived": i < 15,
+                    "termination_reason": None if i < 15 else "halt",
+                    "terminated_at": None if i < 15 else 50,
+                }
+            )
+        pq.write_table(pa.Table.from_pylist(runs_rows), logs_dir / "experiment_runs.parquet")
+
+        # phase_1 metrics_summary.parquet (low neighbor MI)
+        p1_metric_rows = []
+        for i in range(n):
+            rule_id = f"phase1_rs{i}_ss{i}"
+            max_step = 100 if i >= 18 else 199
+            for step in range(max_step + 1):
+                p1_metric_rows.append(_make_metric_row(rule_id, step, neighbor_mi=0.1 + i * 0.005))
+        _write_metrics_parquet(p1_logs / "metrics_summary.parquet", p1_metric_rows)
+
+        # phase_2 metrics_summary.parquet (high neighbor MI)
+        p2_metric_rows = []
+        for i in range(n):
+            rule_id = f"phase2_rs{i}_ss{i}"
+            max_step = 50 if i >= 15 else 199
+            for step in range(max_step + 1):
+                p2_metric_rows.append(_make_metric_row(rule_id, step, neighbor_mi=0.5 + i * 0.01))
+        _write_metrics_parquet(p2_logs / "metrics_summary.parquet", p2_metric_rows)
+
+        result = run_statistical_analysis(tmp_path)
+
+        assert "generated_at" in result
+        assert "metric_tests" in result
+        assert "survival_test" in result
+        assert "neighbor_mutual_information" in result["metric_tests"]
+
+        nmi = result["metric_tests"]["neighbor_mutual_information"]
+        assert nmi["p_value"] < 0.05
+        assert nmi["n_phase1"] == n
+        assert nmi["n_phase2"] == n
+
+    def test_saves_json_output(self, tmp_path: Path) -> None:
+        """Verify run_statistical_analysis with save produces valid JSON."""
+        logs_dir = tmp_path / "logs"
+        logs_dir.mkdir()
+        p1_logs = tmp_path / "phase_1" / "logs"
+        p2_logs = tmp_path / "phase_2" / "logs"
+        p1_logs.mkdir(parents=True)
+        p2_logs.mkdir(parents=True)
+
+        n = 10
+        runs_rows = []
+        for i in range(n):
+            for phase in [1, 2]:
+                runs_rows.append(
+                    {
+                        "schema_version": 1,
+                        "rule_id": f"phase{phase}_rs{i}_ss{i}",
+                        "phase": phase,
+                        "seed_batch": 0,
+                        "rule_seed": i,
+                        "sim_seed": i,
+                        "survived": True,
+                        "termination_reason": None,
+                        "terminated_at": None,
+                    }
+                )
+        pq.write_table(pa.Table.from_pylist(runs_rows), logs_dir / "experiment_runs.parquet")
+
+        for phase, phase_dir, mi_base in [(1, p1_logs, 0.1), (2, p2_logs, 0.5)]:
+            rows = []
+            for i in range(n):
+                rule_id = f"phase{phase}_rs{i}_ss{i}"
+                for step in range(5):
+                    rows.append(_make_metric_row(rule_id, step, neighbor_mi=mi_base + i * 0.01))
+            _write_metrics_parquet(phase_dir / "metrics_summary.parquet", rows)
+
+        result = run_statistical_analysis(tmp_path)
+        out_path = logs_dir / "statistical_tests.json"
+        save_results(result, out_path)
+
+        loaded = json.loads(out_path.read_text())
+        assert "metric_tests" in loaded
+        assert "survival_test" in loaded
