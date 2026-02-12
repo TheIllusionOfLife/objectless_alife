@@ -79,7 +79,33 @@ def phase_comparison_tests(
             "phase2_median": float(statistics.median(vals2)),
         }
 
+    # Holm-Bonferroni correction for multiple comparisons
+    if results:
+        metrics_tested = list(results.keys())
+        raw_pvals = [results[m]["p_value"] for m in metrics_tested]
+        corrected = _holm_bonferroni(raw_pvals)
+        for m, cp in zip(metrics_tested, corrected, strict=True):
+            results[m]["p_value_corrected"] = cp
+
     return results
+
+
+def _holm_bonferroni(p_values: list[float]) -> list[float]:
+    """Apply Holm-Bonferroni step-down correction to a list of p-values."""
+    n = len(p_values)
+    if n == 0:
+        return []
+
+    # Sort by p-value, keeping original indices
+    indexed = sorted(enumerate(p_values), key=lambda x: x[1])
+    corrected = [0.0] * n
+    cumulative_max = 0.0
+    for rank, (orig_idx, pval) in enumerate(indexed):
+        adjusted = pval * (n - rank)
+        # Enforce monotonicity: corrected p-values never decrease in sorted order
+        cumulative_max = max(cumulative_max, adjusted)
+        corrected[orig_idx] = min(cumulative_max, 1.0)
+    return corrected
 
 
 def survival_rate_test(runs_table: pa.Table) -> dict:
@@ -98,6 +124,8 @@ def survival_rate_test(runs_table: pa.Table) -> dict:
             counts[p]["terminated"] += 1
 
     sorted_phases = sorted(counts.keys())
+    if len(sorted_phases) != 2:
+        raise ValueError(f"Expected exactly 2 phases, found {len(sorted_phases)}: {sorted_phases}")
     p1, p2 = sorted_phases[0], sorted_phases[1]
 
     contingency = [

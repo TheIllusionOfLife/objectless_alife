@@ -9,6 +9,7 @@ import pytest
 
 from src.run_search import METRICS_SCHEMA, PHASE_SUMMARY_METRIC_NAMES
 from src.stats import (
+    _holm_bonferroni,
     load_final_step_metrics,
     phase_comparison_tests,
     run_statistical_analysis,
@@ -98,6 +99,7 @@ class TestPhaseComparisonTests:
         entry = result["neighbor_mutual_information"]
         assert "u_statistic" in entry
         assert "p_value" in entry
+        assert "p_value_corrected" in entry
         assert "effect_size_r" in entry
         assert "n_phase1" in entry
         assert "n_phase2" in entry
@@ -146,6 +148,35 @@ class TestPhaseComparisonTests:
         assert len(result) == len(PHASE_SUMMARY_METRIC_NAMES)
 
 
+class TestHolmBonferroni:
+    def test_single_p_value_unchanged(self) -> None:
+        assert _holm_bonferroni([0.03]) == [0.03]
+
+    def test_corrected_values_are_at_least_as_large_as_raw(self) -> None:
+        raw = [0.01, 0.04, 0.03]
+        corrected = _holm_bonferroni(raw)
+        for r, c in zip(raw, corrected, strict=True):
+            assert c >= r
+
+    def test_corrected_values_capped_at_one(self) -> None:
+        raw = [0.5, 0.6, 0.7]
+        corrected = _holm_bonferroni(raw)
+        for c in corrected:
+            assert c <= 1.0
+
+    def test_known_correction(self) -> None:
+        # 3 tests: sorted p-values are 0.01, 0.03, 0.04
+        # Holm: 0.01*3=0.03, max(0.03, 0.03*2)=0.06, max(0.06, 0.04*1)=0.06
+        raw = [0.01, 0.04, 0.03]
+        corrected = _holm_bonferroni(raw)
+        assert corrected[0] == pytest.approx(0.03)  # 0.01 * 3
+        assert corrected[2] == pytest.approx(0.06)  # max(0.03, 0.03*2)
+        assert corrected[1] == pytest.approx(0.06)  # max(0.06, 0.04*1)
+
+    def test_empty_returns_empty(self) -> None:
+        assert _holm_bonferroni([]) == []
+
+
 class TestSurvivalRateTest:
     def test_returns_expected_fields(self) -> None:
         runs = pa.table(
@@ -171,6 +202,16 @@ class TestSurvivalRateTest:
         )
         result = survival_rate_test(runs)
         assert 0.0 <= result["p_value"] <= 1.0
+
+    def test_rejects_single_phase(self) -> None:
+        runs = pa.table(
+            {
+                "phase": [1, 1, 1],
+                "survived": [True, True, False],
+            }
+        )
+        with pytest.raises(ValueError, match="Expected exactly 2 phases"):
+            survival_rate_test(runs)
 
     def test_very_different_rates_yield_small_p(self) -> None:
         runs = pa.table(
