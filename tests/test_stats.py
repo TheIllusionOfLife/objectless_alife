@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 import pyarrow as pa
@@ -18,6 +19,7 @@ from src.stats import (
     save_results,
     survival_rate_test,
 )
+from src.stats import main as stats_main
 
 
 def _write_metrics_parquet(path: Path, rows: list[dict]) -> None:
@@ -431,3 +433,62 @@ class TestPairwiseSurvivalComparison:
 
         result = pairwise_survival_comparison(dir_a, dir_b)
         assert result["p_value"] < 0.05
+
+    def test_empty_directory_returns_nan(self, tmp_path: Path) -> None:
+        dir_a = tmp_path / "a" / "rules"
+        dir_b = tmp_path / "b" / "rules"
+        dir_a.mkdir(parents=True)
+        dir_b.mkdir(parents=True)
+        # dir_a is empty, dir_b has rules
+        for i in range(5):
+            self._write_rule_json(dir_b, f"rule_b_{i}", survived=True)
+
+        result = pairwise_survival_comparison(dir_a, dir_b)
+        assert result["a_total"] == 0
+        assert math.isnan(result["chi2"])
+        assert math.isnan(result["p_value"])
+
+
+class TestStatsMainPairwise:
+    def _setup_dir(self, base: Path, label: str, n: int, mi_base: float, surv_frac: float) -> Path:
+        """Create a minimal data directory with metrics parquet and rule JSONs."""
+        d = base / label
+        logs = d / "logs"
+        rules = d / "rules"
+        logs.mkdir(parents=True)
+        rules.mkdir(parents=True)
+        rows = [
+            _make_metric_row(f"rule_{i}", step=5, neighbor_mi=mi_base + i * 0.01) for i in range(n)
+        ]
+        _write_metrics_parquet(logs / "metrics_summary.parquet", rows)
+        for i in range(n):
+            payload = {
+                "rule_id": f"rule_{i}",
+                "table": [0] * 20,
+                "survived": i < int(n * surv_frac),
+                "filter_results": {},
+                "metadata": {},
+            }
+            (rules / f"rule_{i}.json").write_text(json.dumps(payload))
+        return d
+
+    def test_pairwise_cli_produces_output_json(self, tmp_path: Path) -> None:
+        dir_a = self._setup_dir(tmp_path, "a", 20, 0.1, 0.8)
+        dir_b = self._setup_dir(tmp_path, "b", 20, 0.5, 0.4)
+        out = tmp_path / "result.json"
+        stats_main(
+            [
+                "--pairwise",
+                "--dir-a",
+                str(dir_a),
+                "--dir-b",
+                str(dir_b),
+                "--output",
+                str(out),
+            ]
+        )
+        loaded = json.loads(out.read_text())
+        assert "metric_tests" in loaded
+        assert "survival_test" in loaded
+        assert loaded["label_a"] == "a"
+        assert loaded["label_b"] == "b"

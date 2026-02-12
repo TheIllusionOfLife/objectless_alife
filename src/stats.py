@@ -192,7 +192,7 @@ def pairwise_survival_comparison(rules_dir_a: Path, rules_dir_b: Path) -> dict:
 
     total_survived = a_survived + b_survived
     total_terminated = (a_total - a_survived) + (b_total - b_survived)
-    if total_survived == 0 or total_terminated == 0:
+    if total_survived == 0 or total_terminated == 0 or a_total == 0 or b_total == 0:
         chi2_val = float("nan")
         p_value_val = float("nan")
     else:

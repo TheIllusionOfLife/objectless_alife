@@ -56,20 +56,24 @@ def compute_phase2_index(self_state: int, neighbor_count: int, dominant_state: i
     return self_state * 25 + neighbor_count * 5 + dominant_state
 
 
+CLOCK_PERIOD = 5
+"""Number of distinct step-clock values for the control phase."""
+
+
 def compute_control_index(self_state: int, neighbor_count: int, step_mod: int) -> int:
     """Compute control rule table index from state, density, and step clock.
 
-    Uses step_mod (step_number % 5) as a non-informative third dimension,
-    producing a 100-entry table comparable in size to phase 2 but without
-    neighbor state information.
+    Uses step_mod (step_number % CLOCK_PERIOD) as a non-informative third
+    dimension, producing a 100-entry table comparable in size to phase 2
+    but without neighbor state information.
     """
     if not 0 <= self_state <= 3:
         raise ValueError("self_state must be in [0, 3]")
     if not 0 <= neighbor_count <= 4:
         raise ValueError("neighbor_count must be in [0, 4]")
-    if not 0 <= step_mod <= 4:
-        raise ValueError("step_mod must be in [0, 4]")
-    return self_state * 25 + neighbor_count * 5 + step_mod
+    if not 0 <= step_mod <= CLOCK_PERIOD - 1:
+        raise ValueError(f"step_mod must be in [0, {CLOCK_PERIOD - 1}]")
+    return self_state * 25 + neighbor_count * CLOCK_PERIOD + step_mod
 
 
 def generate_rule_table(phase: ObservationPhase, seed: int) -> list[int]:
