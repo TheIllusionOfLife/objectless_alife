@@ -1,0 +1,185 @@
+"""Statistical significance tests for phase comparison experiments.
+
+Provides Mann-Whitney U tests for metric comparisons and chi-squared tests
+for survival rate differences between observation phases.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import statistics
+from datetime import datetime, timezone
+from pathlib import Path
+
+import pyarrow as pa
+import pyarrow.parquet as pq
+from scipy.stats import chi2_contingency, mannwhitneyu
+
+from src.run_search import PHASE_SUMMARY_METRIC_NAMES
+
+
+def load_final_step_metrics(parquet_path: Path) -> pa.Table:
+    """Load metrics_summary.parquet and return one row per rule at its final step."""
+    table = pq.read_table(parquet_path)
+    rule_ids = table.column("rule_id")
+    steps = table.column("step")
+
+    # Find max step per rule_id
+    max_steps: dict[str, int] = {}
+    for i in range(table.num_rows):
+        rid = rule_ids[i].as_py()
+        step = steps[i].as_py()
+        if rid not in max_steps or step > max_steps[rid]:
+            max_steps[rid] = step
+
+    # Filter to final-step rows
+    mask = [
+        rule_ids[i].as_py() in max_steps and steps[i].as_py() == max_steps[rule_ids[i].as_py()]
+        for i in range(table.num_rows)
+    ]
+    return table.filter(mask)
+
+
+def phase_comparison_tests(
+    phase1_metrics: pa.Table,
+    phase2_metrics: pa.Table,
+    metrics_to_test: list[str],
+) -> dict:
+    """Run Mann-Whitney U test for each metric between two phases.
+
+    Returns a dict keyed by metric name. Metrics with insufficient non-null
+    data are silently skipped.
+    """
+    results: dict[str, dict] = {}
+
+    for metric in metrics_to_test:
+        col1 = phase1_metrics.column(metric)
+        col2 = phase2_metrics.column(metric)
+
+        # Drop nulls and NaNs
+        vals1 = [v for v in col1.to_pylist() if v is not None and v == v]
+        vals2 = [v for v in col2.to_pylist() if v is not None and v == v]
+
+        if len(vals1) < 2 or len(vals2) < 2:
+            continue
+
+        u_stat, p_value = mannwhitneyu(vals1, vals2, alternative="two-sided")
+        n1, n2 = len(vals1), len(vals2)
+        # Rank-biserial correlation: r = 1 - (2U)/(n1*n2)
+        effect_size_r = 1.0 - (2.0 * u_stat) / (n1 * n2)
+
+        results[metric] = {
+            "u_statistic": float(u_stat),
+            "p_value": float(p_value),
+            "effect_size_r": float(effect_size_r),
+            "n_phase1": n1,
+            "n_phase2": n2,
+            "phase1_median": float(statistics.median(vals1)),
+            "phase2_median": float(statistics.median(vals2)),
+        }
+
+    return results
+
+
+def survival_rate_test(runs_table: pa.Table) -> dict:
+    """Chi-squared test on survival counts between phases (2x2 contingency)."""
+    phases = runs_table.column("phase").to_pylist()
+    survived = runs_table.column("survived").to_pylist()
+
+    counts: dict[int, dict[str, int]] = {}
+    for phase, surv in zip(phases, survived, strict=True):
+        p = int(phase)
+        if p not in counts:
+            counts[p] = {"survived": 0, "terminated": 0}
+        if surv:
+            counts[p]["survived"] += 1
+        else:
+            counts[p]["terminated"] += 1
+
+    sorted_phases = sorted(counts.keys())
+    p1, p2 = sorted_phases[0], sorted_phases[1]
+
+    contingency = [
+        [counts[p1]["survived"], counts[p1]["terminated"]],
+        [counts[p2]["survived"], counts[p2]["terminated"]],
+    ]
+
+    # chi2_contingency fails when any expected frequency is zero (e.g. both
+    # phases have identical survival rates of 0% or 100%).  Return NaN in
+    # that degenerate case.
+    total_survived = counts[p1]["survived"] + counts[p2]["survived"]
+    total_terminated = counts[p1]["terminated"] + counts[p2]["terminated"]
+    if total_survived == 0 or total_terminated == 0:
+        chi2_val = float("nan")
+        p_value_val = float("nan")
+    else:
+        chi2_val, p_value_val, _, _ = chi2_contingency(contingency)
+
+    return {
+        "chi2": float(chi2_val),
+        "p_value": float(p_value_val),
+        "phase1_survived": counts[p1]["survived"],
+        "phase1_total": counts[p1]["survived"] + counts[p1]["terminated"],
+        "phase2_survived": counts[p2]["survived"],
+        "phase2_total": counts[p2]["survived"] + counts[p2]["terminated"],
+    }
+
+
+def run_statistical_analysis(data_dir: Path) -> dict:
+    """Orchestrator: load data, run all tests, return full results dict."""
+    data_dir = Path(data_dir)
+
+    # Load experiment runs
+    runs_path = data_dir / "logs" / "experiment_runs.parquet"
+    runs_table = pq.read_table(runs_path)
+
+    # Load per-phase final-step metrics
+    p1_metrics = load_final_step_metrics(data_dir / "phase_1" / "logs" / "metrics_summary.parquet")
+    p2_metrics = load_final_step_metrics(data_dir / "phase_2" / "logs" / "metrics_summary.parquet")
+
+    # Metric tests
+    metric_results = phase_comparison_tests(p1_metrics, p2_metrics, PHASE_SUMMARY_METRIC_NAMES)
+
+    # Survival test
+    surv_result = survival_rate_test(runs_table)
+
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "data_dir": str(data_dir),
+        "metric_tests": metric_results,
+        "survival_test": surv_result,
+    }
+
+
+def save_results(results: dict, output_path: Path) -> None:
+    """Persist results as JSON."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(results, ensure_ascii=False, indent=2))
+
+
+def main(argv: list[str] | None = None) -> None:
+    """CLI entrypoint for statistical analysis."""
+    parser = argparse.ArgumentParser(description="Run statistical significance tests")
+    parser.add_argument(
+        "--data-dir",
+        type=Path,
+        required=True,
+        help="Path to experiment data directory (e.g. data/stage_b)",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Output JSON path (default: <data-dir>/logs/statistical_tests.json)",
+    )
+    args = parser.parse_args(argv)
+
+    output_path = args.output or (args.data_dir / "logs" / "statistical_tests.json")
+    results = run_statistical_analysis(args.data_dir)
+    save_results(results, output_path)
+    print(json.dumps(results, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()
