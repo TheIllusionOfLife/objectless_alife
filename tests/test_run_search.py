@@ -13,6 +13,7 @@ from src.run_search import (
     SearchConfig,
     _entropy_from_action_counts,
     _parse_grid_sizes,
+    _parse_phase,
     main,
     run_batch_search,
     run_density_sweep,
@@ -590,6 +591,33 @@ def test_run_search_main_density_sweep_mode_generates_aggregate_files(tmp_path: 
     assert (logs_dir / "density_sweep_runs.parquet").exists()
     assert (logs_dir / "density_phase_summary.parquet").exists()
     assert (logs_dir / "density_phase_comparison.parquet").exists()
+
+
+def test_run_batch_search_control_phase_produces_valid_artifacts(tmp_path: Path) -> None:
+    results = run_batch_search(
+        n_rules=2,
+        phase=ObservationPhase.CONTROL_DENSITY_CLOCK,
+        out_dir=tmp_path,
+        steps=10,
+        base_rule_seed=0,
+        base_sim_seed=0,
+    )
+    assert len(results) == 2
+
+    rules_dir = tmp_path / "rules"
+    json_files = list(rules_dir.glob("*.json"))
+    assert len(json_files) == 2
+
+    payload = json.loads(json_files[0].read_text())
+    assert payload["metadata"]["observation_phase"] == 3
+    assert len(payload["table"]) == 100
+
+    metric_table = pq.read_table(tmp_path / "logs" / "metrics_summary.parquet")
+    assert metric_table.num_rows > 0
+
+
+def test_parse_phase_returns_control_for_3() -> None:
+    assert _parse_phase(3) == ObservationPhase.CONTROL_DENSITY_CLOCK
 
 
 def test_run_search_main_rejects_density_sweep_and_experiment_together(tmp_path: Path) -> None:

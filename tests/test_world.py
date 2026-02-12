@@ -97,6 +97,39 @@ def test_apply_action_rejects_invalid_action() -> None:
         world.apply_action(agent_id=0, action=9)
 
 
+def test_step_control_phase_produces_valid_actions() -> None:
+    config = WorldConfig(grid_width=10, grid_height=10, num_agents=4, steps=5)
+    world = World(config=config, sim_seed=99)
+    rule_table = [8] * 100  # all no-ops
+    actions = world.step(rule_table, ObservationPhase.CONTROL_DENSITY_CLOCK, step_number=7)
+    assert len(actions) == 4
+    assert all(a == 8 for a in actions)
+
+
+def test_step_control_phase_deterministic() -> None:
+    config = WorldConfig(grid_width=10, grid_height=10, num_agents=4, steps=5)
+    w1 = World(config=config, sim_seed=42)
+    w2 = World(config=config, sim_seed=42)
+    from src.rules import generate_rule_table
+
+    rule_table = generate_rule_table(ObservationPhase.CONTROL_DENSITY_CLOCK, seed=10)
+    for step in range(3):
+        w1.step(rule_table, ObservationPhase.CONTROL_DENSITY_CLOCK, step_number=step)
+        w2.step(rule_table, ObservationPhase.CONTROL_DENSITY_CLOCK, step_number=step)
+    assert w1.snapshot() == w2.snapshot()
+
+
+def test_step_existing_phases_ignore_step_number() -> None:
+    """Existing phases must produce identical results regardless of step_number."""
+    config = WorldConfig(grid_width=10, grid_height=10, num_agents=4, steps=5)
+    w1 = World(config=config, sim_seed=42)
+    w2 = World(config=config, sim_seed=42)
+    rule_table = [8] * 20
+    w1.step(rule_table, ObservationPhase.PHASE1_DENSITY, step_number=0)
+    w2.step(rule_table, ObservationPhase.PHASE1_DENSITY, step_number=99)
+    assert w1.snapshot() == w2.snapshot()
+
+
 def test_snapshot_and_state_vector_do_not_depend_on_sorted_builtin(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
