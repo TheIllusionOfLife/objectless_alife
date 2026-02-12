@@ -23,7 +23,7 @@ No objective function, fitness, or reward signal is used. The only filters are p
 
 | Parameter | Value |
 |-----------|-------|
-| Rules per phase | 300 (100 rules x 3 seed batches) |
+| Unique rules per phase | 300 |
 | Grid | 20x20, toroidal |
 | Agents | 30 |
 | Steps | 200 |
@@ -33,7 +33,7 @@ No objective function, fitness, or reward signal is used. The only filters are p
 
 | Parameter | Value |
 |-----------|-------|
-| Rules per phase | 5,000 (1,000 rules x 5 seed batches) |
+| Unique rules per phase | 5,000 |
 | Grid | 20x20, toroidal |
 | Agents | 30 |
 | Steps | 200 |
@@ -43,11 +43,13 @@ No objective function, fitness, or reward signal is used. The only filters are p
 
 | Parameter | Value |
 |-----------|-------|
-| Rules per density point per phase | 600 (100 rules x 6 seed batches) |
+| Unique rules per density point per phase | 600 |
 | Grid sizes | 15x15, 20x20, 30x30 |
 | Agent counts | 15, 30, 60, 90 |
 | Density range | 0.017 - 0.400 (12 points) |
 | Steps | 200 |
+
+> **Note on seed structure**: Each rule evaluation uses a unique `(rule_seed, sim_seed)` pair — both seeds are incremented in lockstep. The "seed batch" label in the data is an execution grouping, not a repeated-trial mechanism. All rules within a phase are distinct.
 
 ---
 
@@ -95,6 +97,17 @@ The survival rate advantage is remarkably stable across sample sizes.
 
 ### 4.2 Replication from Stage A
 
+Stage A absolute values (n=300/phase) for reference:
+
+| Metric | Stage A P1 | Stage A P2 |
+|--------|-----------|-----------|
+| Neighbor MI | 0.179 | 0.395 |
+| State entropy | 1.044 | 1.243 |
+| Action entropy variance | 0.198 | 0.229 |
+| Moran's I | 0.153 | 0.014 |
+
+Replication assessment:
+
 | Metric | Stage A Delta | Stage B Delta | Replicated? |
 |--------|--------------|--------------|-------------|
 | Neighbor MI | +121% | +130% | Yes (stronger) |
@@ -116,7 +129,7 @@ All major signals replicate except Moran's I, which was a small-sample artifact 
 |---------|------|--------|---------|---------|-------|
 | 0.017 | 30x30 | 15 | 86.7% | 86.7% | 0.0% |
 | 0.033 | 30x30 | 30 | 83.3% | 85.8% | +2.5% |
-| 0.037 | 20x20 | 15 | 80.8% | 81.8% | +1.0% |
+| 0.038 | 20x20 | 15 | 80.8% | 81.8% | +1.0% |
 | 0.067 | 15x15 | 15 | 68.7% | 76.0% | +7.3% |
 | 0.067 | 30x30 | 60 | 70.5% | 76.3% | +5.8% |
 | 0.075 | 20x20 | 30 | 70.2% | 72.5% | +2.3% |
@@ -129,18 +142,20 @@ All major signals replicate except Moran's I, which was a small-sample artifact 
 
 ### 5.2 Neighbor Mutual Information by Density
 
-| Density | Phase 1 MI | Phase 2 MI | Abs. Delta | Rel. Delta |
-|---------|-----------|-----------|------------|------------|
-| 0.017 | 0.120 | 0.197 | +0.077 | +64% |
-| 0.033 | 0.162 | 0.385 | +0.224 | +138% |
-| 0.067 (avg) | 0.161 | 0.386 | +0.225 | +144% |
-| 0.075 | 0.174 | 0.412 | +0.239 | +137% |
-| 0.100 | 0.117 | 0.417 | +0.300 | +257% |
-| 0.133 | 0.184 | 0.423 | +0.238 | +129% |
-| 0.150 | 0.150 | 0.407 | +0.257 | +171% |
-| 0.225 | 0.106 | 0.339 | +0.233 | +219% |
-| 0.267 | 0.131 | 0.343 | +0.212 | +162% |
-| 0.400 | 0.076 | 0.217 | +0.141 | +186% |
+| Density | Grid | Agents | Phase 1 MI | Phase 2 MI | Abs. Delta | Rel. Delta |
+|---------|------|--------|-----------|-----------|------------|------------|
+| 0.017 | 30x30 | 15 | 0.120 | 0.197 | +0.077 | +64% |
+| 0.033 | 30x30 | 30 | 0.162 | 0.385 | +0.224 | +138% |
+| 0.038 | 20x20 | 15 | 0.154 | 0.282 | +0.128 | +83% |
+| 0.067 | 15x15 | 15 | 0.177 | 0.348 | +0.171 | +97% |
+| 0.067 | 30x30 | 60 | 0.146 | 0.424 | +0.278 | +191% |
+| 0.075 | 20x20 | 30 | 0.174 | 0.412 | +0.239 | +137% |
+| 0.100 | 30x30 | 90 | 0.117 | 0.417 | +0.300 | +257% |
+| 0.133 | 15x15 | 30 | 0.184 | 0.423 | +0.238 | +129% |
+| 0.150 | 20x20 | 60 | 0.150 | 0.407 | +0.257 | +171% |
+| 0.225 | 20x20 | 90 | 0.106 | 0.339 | +0.232 | +219% |
+| 0.267 | 15x15 | 60 | 0.131 | 0.343 | +0.212 | +162% |
+| 0.400 | 15x15 | 90 | 0.076 | 0.217 | +0.141 | +186% |
 
 Phase 2 MI is higher at every density point. The doubling-or-more effect is robust across the entire density range.
 
@@ -212,5 +227,5 @@ This is not trivially expected: the Phase 2 rule table is larger (100 vs 20 entr
 | Stage B rules (P1) | `data/stage_b/phase_1/rules/` | 5,000 |
 | Stage B rules (P2) | `data/stage_b/phase_2/rules/` | 5,000 |
 | Stage B logs | `data/stage_b/logs/` | 3 files |
-| Density sweep | `data/stage_b_density/` | 12 density points x 2 phases |
+| Density sweep | `data/stage_b_density/` | 14,400 rule evaluations (12 density points x 2 phases x 600 rules) |
 | Animations (Stage A) | `output/stage_a/` | 5 GIFs |
