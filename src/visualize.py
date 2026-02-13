@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -45,6 +46,8 @@ PHASE_COLORS: dict[str, str] = {
     "P2": "tab:red",
     "Control": "tab:gray",
 }
+
+_SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9_\-]+$")
 
 
 def _resolve_within_base(path: Path, base_dir: Path) -> Path:
@@ -274,6 +277,9 @@ def render_batch(
     created: list[Path] = []
 
     for label, phase_dir in phase_dirs:
+        safe_label = Path(label).name
+        if not _SAFE_NAME_RE.match(safe_label):
+            raise ValueError(f"Unsafe label for filename: {label!r}")
         phase_dir = Path(phase_dir)
         metrics_path = phase_dir / "logs" / "metrics_summary.parquet"
         sim_log_path = phase_dir / "logs" / "simulation_log.parquet"
@@ -282,8 +288,11 @@ def render_batch(
         top_rule_ids = select_top_rules(metrics_path, metric_name=metric_name, top_n=top_n)
 
         for rank, rule_id in enumerate(top_rule_ids, start=1):
-            rule_json_path = rules_dir / f"{rule_id}.json"
-            out_name = f"{label}_top{rank}_{metric_name}.gif"
+            safe_rule_id = Path(rule_id).name
+            if not _SAFE_NAME_RE.match(safe_rule_id):
+                raise ValueError(f"Unsafe rule_id for filename: {rule_id!r}")
+            rule_json_path = rules_dir / f"{safe_rule_id}.json"
+            out_name = f"{safe_label}_top{rank}_{metric_name}.gif"
             out_path = output_dir / out_name
             render_rule_animation(
                 simulation_log_path=sim_log_path,
@@ -318,6 +327,8 @@ def render_snapshot_grid(
 
     for row_idx, (label, sim_log_path, metrics_path, rule_id) in enumerate(phase_configs):
         sim_rows = pq.read_table(sim_log_path, filters=[("rule_id", "=", rule_id)]).to_pylist()
+        if not sim_rows:
+            raise ValueError(f"No simulation rows for rule_id={rule_id} in {sim_log_path}")
         available_steps = sorted({int(r["step"]) for r in sim_rows})
         by_step: dict[int, list[dict[str, object]]] = {s: [] for s in available_steps}
         for r in sim_rows:
@@ -480,6 +491,7 @@ def _build_batch_parser(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--top-n", type=int, default=3)
     p.add_argument("--output-dir", type=Path, required=True)
     p.add_argument("--fps", type=int, default=8)
+    p.add_argument("--base-dir", type=Path, default=Path("."))
 
 
 def _build_figure_parser(sub: argparse._SubParsersAction) -> None:
@@ -489,6 +501,7 @@ def _build_figure_parser(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--control-dir", type=Path, required=True)
     p.add_argument("--output-dir", type=Path, required=True)
     p.add_argument("--top-n", type=int, default=3)
+    p.add_argument("--base-dir", type=Path, default=Path("."))
 
 
 def _parse_phase_dirs(raw: list[str]) -> list[tuple[str, Path]]:
@@ -522,7 +535,12 @@ def main() -> None:
             grid_height=args.grid_height,
         )
     elif args.command == "batch":
+        base_dir = Path(args.base_dir).resolve()
         phase_dirs = _parse_phase_dirs(args.phase_dir)
+        # Validate all phase dirs and output dir stay within base_dir
+        for _label, pdir in phase_dirs:
+            _resolve_within_base(pdir, base_dir)
+        _resolve_within_base(args.output_dir, base_dir)
         render_batch(
             phase_dirs=phase_dirs,
             output_dir=args.output_dir,
@@ -530,6 +548,10 @@ def main() -> None:
             fps=args.fps,
         )
     elif args.command == "figure":
+        base_dir = Path(args.base_dir).resolve()
+        # Validate all dirs stay within base_dir
+        for pdir in [args.p1_dir, args.p2_dir, args.control_dir, args.output_dir]:
+            _resolve_within_base(pdir, base_dir)
         output_dir = Path(args.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
