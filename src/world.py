@@ -4,7 +4,9 @@ from dataclasses import dataclass
 from random import Random
 
 from src.rules import (
+    CLOCK_PERIOD,
     ObservationPhase,
+    compute_control_index,
     compute_phase1_index,
     compute_phase2_index,
     dominant_neighbor_state,
@@ -131,7 +133,9 @@ class World:
         if 4 <= action <= 7:
             agent.state = action - 4
 
-    def step(self, rule_table: list[int], phase: ObservationPhase) -> list[int]:
+    def step(
+        self, rule_table: list[int], phase: ObservationPhase, step_number: int = 0
+    ) -> list[int]:
         """Advance one random-sequential simulation step and return intended actions."""
         order = list(range(len(self.agents)))
         self.rng.shuffle(order)
@@ -144,9 +148,14 @@ class World:
 
             if phase == ObservationPhase.PHASE1_DENSITY:
                 index = compute_phase1_index(agent.state, neighbor_count)
-            else:
+            elif phase == ObservationPhase.CONTROL_DENSITY_CLOCK:
+                step_mod = step_number % CLOCK_PERIOD
+                index = compute_control_index(agent.state, neighbor_count, step_mod)
+            elif phase == ObservationPhase.PHASE2_PROFILE:
                 dom = dominant_neighbor_state(neighbor_states)
                 index = compute_phase2_index(agent.state, neighbor_count, dom)
+            else:
+                raise NotImplementedError(f"Unhandled observation phase: {phase}")
 
             action = rule_table[index]
             actions[agent_id] = action

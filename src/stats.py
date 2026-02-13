@@ -154,6 +154,80 @@ def survival_rate_test(runs_table: pa.Table) -> dict:
     }
 
 
+def pairwise_metric_comparison(
+    metrics_path_a: Path,
+    metrics_path_b: Path,
+    metrics_to_test: list[str],
+) -> dict:
+    """Run Mann-Whitney U tests between two arbitrary metrics parquet files.
+
+    Loads final-step metrics from each file and runs the same statistical
+    pipeline as phase_comparison_tests(), returning results in the same format.
+    """
+    table_a = load_final_step_metrics(metrics_path_a)
+    table_b = load_final_step_metrics(metrics_path_b)
+    return phase_comparison_tests(table_a, table_b, metrics_to_test)
+
+
+def pairwise_survival_comparison(rules_dir_a: Path, rules_dir_b: Path) -> dict:
+    """Chi-squared test on survival counts between two arbitrary rule directories."""
+
+    def _count_survival(rules_dir: Path) -> tuple[int, int]:
+        survived = 0
+        total = 0
+        for path in sorted(rules_dir.glob("*.json")):
+            data = json.loads(path.read_text())
+            total += 1
+            if data.get("survived", False):
+                survived += 1
+        return survived, total
+
+    a_survived, a_total = _count_survival(rules_dir_a)
+    b_survived, b_total = _count_survival(rules_dir_b)
+
+    contingency = [
+        [a_survived, a_total - a_survived],
+        [b_survived, b_total - b_survived],
+    ]
+
+    total_survived = a_survived + b_survived
+    total_terminated = (a_total - a_survived) + (b_total - b_survived)
+    if total_survived == 0 or total_terminated == 0 or a_total == 0 or b_total == 0:
+        chi2_val = float("nan")
+        p_value_val = float("nan")
+    else:
+        chi2_val, p_value_val, _, _ = chi2_contingency(contingency)
+
+    return {
+        "chi2": float(chi2_val),
+        "p_value": float(p_value_val),
+        "a_survived": a_survived,
+        "a_total": a_total,
+        "b_survived": b_survived,
+        "b_total": b_total,
+    }
+
+
+def run_pairwise_analysis(
+    metrics_a: Path,
+    metrics_b: Path,
+    rules_a: Path,
+    rules_b: Path,
+    label_a: str,
+    label_b: str,
+) -> dict:
+    """Orchestrator combining pairwise metric + survival tests."""
+    metric_results = pairwise_metric_comparison(metrics_a, metrics_b, PHASE_SUMMARY_METRIC_NAMES)
+    surv_result = pairwise_survival_comparison(rules_a, rules_b)
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "label_a": label_a,
+        "label_b": label_b,
+        "metric_tests": metric_results,
+        "survival_test": surv_result,
+    }
+
+
 def run_statistical_analysis(data_dir: Path) -> dict:
     """Orchestrator: load data, run all tests, return full results dict."""
     data_dir = Path(data_dir)
@@ -189,22 +263,53 @@ def save_results(results: dict, output_path: Path) -> None:
 def main(argv: list[str] | None = None) -> None:
     """CLI entrypoint for statistical analysis."""
     parser = argparse.ArgumentParser(description="Run statistical significance tests")
-    parser.add_argument(
+    mode_group = parser.add_mutually_exclusive_group(required=True)
+    mode_group.add_argument(
         "--data-dir",
         type=Path,
-        required=True,
+        default=None,
         help="Path to experiment data directory (e.g. data/stage_b)",
+    )
+    mode_group.add_argument(
+        "--pairwise",
+        action="store_true",
+        help="Run pairwise comparison between two arbitrary directories",
+    )
+    parser.add_argument(
+        "--dir-a",
+        type=Path,
+        default=None,
+        help="First data directory for pairwise comparison",
+    )
+    parser.add_argument(
+        "--dir-b",
+        type=Path,
+        default=None,
+        help="Second data directory for pairwise comparison",
     )
     parser.add_argument(
         "--output",
         type=Path,
         default=None,
-        help="Output JSON path (default: <data-dir>/logs/statistical_tests.json)",
+        help="Output JSON path",
     )
     args = parser.parse_args(argv)
 
-    output_path = args.output or (args.data_dir / "logs" / "statistical_tests.json")
-    results = run_statistical_analysis(args.data_dir)
+    if args.pairwise:
+        if not args.dir_a or not args.dir_b:
+            parser.error("--pairwise requires --dir-a and --dir-b")
+        metrics_a = args.dir_a / "logs" / "metrics_summary.parquet"
+        metrics_b = args.dir_b / "logs" / "metrics_summary.parquet"
+        rules_a = args.dir_a / "rules"
+        rules_b = args.dir_b / "rules"
+        label_a = args.dir_a.name
+        label_b = args.dir_b.name
+        results = run_pairwise_analysis(metrics_a, metrics_b, rules_a, rules_b, label_a, label_b)
+        output_path = args.output or (args.dir_a.parent / "logs" / "pairwise_tests.json")
+    else:
+        output_path = args.output or (args.data_dir / "logs" / "statistical_tests.json")
+        results = run_statistical_analysis(args.data_dir)
+
     save_results(results, output_path)
     print(json.dumps(results, ensure_ascii=False, indent=2))
 
