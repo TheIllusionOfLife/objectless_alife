@@ -337,7 +337,6 @@ def test_render_rule_animation_with_multiple_metrics(
     import src.visualize as visualize
 
     captured_fig: list[object] = []
-    original_func_anim = _DummyAnimation
 
     class _CaptureDummyAnimation(_DummyAnimation):
         def __init__(self, fig: object, *args: object, **kwargs: object) -> None:
@@ -485,7 +484,7 @@ def test_render_metric_distribution_creates_pdf(tmp_path: Path) -> None:
     )
     run_batch_search(
         n_rules=3,
-        phase=ObservationPhase.PHASE2_DENSITY_CLOCK,
+        phase=ObservationPhase.PHASE2_PROFILE,
         out_dir=p2_dir,
         steps=4,
         base_rule_seed=30,
