@@ -48,12 +48,14 @@ PHASE_COLORS: dict[str, str] = {
     "P1": "tab:blue",
     "P2": "tab:red",
     "Control": "tab:gray",
+    "RW": "tab:olive",
 }
 
 PHASE_DESCRIPTIONS: dict[str, str] = {
     "P1": "Phase 1 (density)",
     "P2": "Phase 2 (state profile)",
-    "Control": "Control (random)",
+    "Control": "Control (step-clock)",
+    "RW": "Random Walk",
 }
 
 STATE_COLORS: list[str] = ["#2196F3", "#FF5722", "#4CAF50", "#FFC107"]
@@ -765,6 +767,7 @@ def _build_figure_parser(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--p2-dir", type=Path, required=True)
     p.add_argument("--control-dir", type=Path, required=True)
     p.add_argument("--output-dir", type=Path, required=True)
+    p.add_argument("--random-walk-dir", type=Path, default=None)
     p.add_argument("--top-n", type=int, default=3)
     p.add_argument("--base-dir", type=Path, default=Path("."))
     p.add_argument("--stats-path", type=Path, default=None)
@@ -828,15 +831,19 @@ def main() -> None:
     elif args.command == "figure":
         base_dir = Path(args.base_dir).resolve()
         # Validate all dirs stay within base_dir
-        for pdir in [args.p1_dir, args.p2_dir, args.control_dir, args.output_dir]:
+        dirs_to_validate = [args.p1_dir, args.p2_dir, args.control_dir, args.output_dir]
+        if args.random_walk_dir is not None:
+            dirs_to_validate.append(args.random_walk_dir)
+        for pdir in dirs_to_validate:
             _resolve_within_base(pdir, base_dir)
         output_dir = Path(args.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        phases = [
+        phases = [("RW", args.random_walk_dir)] if args.random_walk_dir is not None else []
+        phases += [
+            ("Control", args.control_dir),
             ("P1", args.p1_dir),
             ("P2", args.p2_dir),
-            ("Control", args.control_dir),
         ]
 
         # Select top rules per phase
