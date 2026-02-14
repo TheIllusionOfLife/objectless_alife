@@ -11,6 +11,7 @@ Agent-facing repository instructions for `objectless_alife`.
 ## Environment And Tooling
 
 - Python ecosystem uses `uv` only.
+- LaTeX compilation uses `tectonic` (not pdflatex/latexmk).
 - Required Python version: 3.11+
 - Install dependencies:
 
@@ -20,6 +21,11 @@ uv sync --extra dev
 ```
 
 - Run commands via `uv run ...`; do not call global tools directly.
+- Compile paper:
+
+```bash
+tectonic paper/main.tex
+```
 
 ## Non-Obvious Commands
 
