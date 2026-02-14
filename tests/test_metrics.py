@@ -16,6 +16,36 @@ from src.metrics import (
 )
 
 
+def _naive_mi(snapshot: tuple[tuple[int, int, int, int], ...], grid_width: int) -> float:
+    """Compute naive plug-in MI (no bias correction) for test comparison."""
+    import math as _math
+    from collections import Counter
+
+    occupied = {(x, y): state for _, x, y, state in snapshot}
+    pairs: list[tuple[int, int]] = []
+    seen_edges: set[tuple[tuple[int, int], tuple[int, int]]] = set()
+    for x, y in occupied:
+        for nx, ny in (((x + 1) % grid_width, y), (x, (y + 1) % grid_width)):
+            if (nx, ny) not in occupied:
+                continue
+            a, b = (x, y), (nx, ny)
+            edge = (a, b) if a < b else (b, a)
+            if edge in seen_edges:
+                continue
+            seen_edges.add(edge)
+            pairs.append((occupied[a], occupied[b]))
+
+    joint = Counter(pairs)
+    left = Counter(a for a, _ in pairs)
+    right = Counter(b for _, b in pairs)
+    n = len(pairs)
+    mi = 0.0
+    for (sl, sr), c in joint.items():
+        p_ab = c / n
+        mi += p_ab * _math.log2(p_ab / (left[sl] / n * (right[sr] / n)))
+    return mi
+
+
 def test_state_entropy_binary_balanced() -> None:
     assert state_entropy([0, 0, 1, 1]) == 1.0
 
@@ -84,44 +114,9 @@ def test_mi_miller_madow_reduces_bias() -> None:
         (3, 1, 1, 1),
     )
     mi = neighbor_mutual_information(snapshot, grid_width=3, grid_height=3)
-    # With only a few pairs, the correction should reduce the value
-    # The naive estimator would give a higher value; corrected should be strictly lower
-    # (We just verify it's non-negative and finite)
     assert mi >= 0.0
     assert mi < float("inf")
-    # Compute naive MI manually for comparison
-    import math as _math
-    from collections import Counter
-
-    occupied = {(x, y): state for _, x, y, state in snapshot}
-    pairs: list[tuple[int, int]] = []
-    seen_edges: set[tuple[tuple[int, int], tuple[int, int]]] = set()
-    for x, y in occupied:
-        neighbors = (
-            ((x + 1) % 3, y),
-            (x, (y + 1) % 3),
-        )
-        for nx, ny in neighbors:
-            if (nx, ny) not in occupied:
-                continue
-            a = (x, y)
-            b = (nx, ny)
-            edge = (a, b) if a < b else (b, a)
-            if edge in seen_edges:
-                continue
-            seen_edges.add(edge)
-            pairs.append((occupied[a], occupied[b]))
-
-    joint = Counter(pairs)
-    left = Counter(a for a, _ in pairs)
-    right = Counter(b for _, b in pairs)
-    n = len(pairs)
-    naive_mi = 0.0
-    for (sl, sr), c in joint.items():
-        p_ab = c / n
-        p_a = left[sl] / n
-        p_b = right[sr] / n
-        naive_mi += p_ab * _math.log2(p_ab / (p_a * p_b))
+    naive_mi = _naive_mi(snapshot, grid_width=3)
     assert mi < naive_mi
 
 
@@ -140,39 +135,7 @@ def test_mi_miller_madow_matches_naive_for_large_sample() -> None:
     # Build a dense 10x10 grid with alternating states — many pairs
     snapshot = tuple((i * 10 + j, i, j, (i + j) % 4) for i in range(10) for j in range(10))
     mi = neighbor_mutual_information(snapshot, grid_width=10, grid_height=10)
-    # Compute naive MI for comparison
-    import math as _math
-    from collections import Counter
-
-    occupied = {(x, y): state for _, x, y, state in snapshot}
-    pairs: list[tuple[int, int]] = []
-    seen_edges: set[tuple[tuple[int, int], tuple[int, int]]] = set()
-    for x, y in occupied:
-        neighbors = (
-            ((x + 1) % 10, y),
-            (x, (y + 1) % 10),
-        )
-        for nx, ny in neighbors:
-            if (nx, ny) not in occupied:
-                continue
-            a = (x, y)
-            b = (nx, ny)
-            edge = (a, b) if a < b else (b, a)
-            if edge in seen_edges:
-                continue
-            seen_edges.add(edge)
-            pairs.append((occupied[a], occupied[b]))
-
-    joint = Counter(pairs)
-    left = Counter(a for a, _ in pairs)
-    right = Counter(b for _, b in pairs)
-    n = len(pairs)
-    naive_mi = 0.0
-    for (sl, sr), c in joint.items():
-        p_ab = c / n
-        p_a = left[sl] / n
-        p_b = right[sr] / n
-        naive_mi += p_ab * _math.log2(p_ab / (p_a * p_b))
+    naive_mi = _naive_mi(snapshot, grid_width=10)
 
     # With 200 pairs and only a few bins, correction should be tiny
     assert abs(mi - naive_mi) < 0.05
