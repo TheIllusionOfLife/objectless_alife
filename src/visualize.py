@@ -50,10 +50,10 @@ PHASE_COLORS: dict[str, str] = {
 }
 
 STATE_COLORS: list[str] = ["#2196F3", "#FF5722", "#4CAF50", "#FFC107"]
-EMPTY_CELL_COLOR = "#F0F0F0"
-EMPTY_CELL_COLOR_DARK = "#1A1A1A"
-GRID_LINE_COLOR = "#CCCCCC"
-GRID_LINE_COLOR_DARK = "#333333"
+EMPTY_CELL_COLOR: str = "#F0F0F0"
+EMPTY_CELL_COLOR_DARK: str = "#1A1A1A"
+GRID_LINE_COLOR: str = "#CCCCCC"
+GRID_LINE_COLOR_DARK: str = "#333333"
 
 _SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9_\-]+$")
 
@@ -94,10 +94,16 @@ def _resolve_grid_dimension(
 def _build_grid_array(
     rows: list[dict[str, object]], grid_width: int, grid_height: int
 ) -> np.ndarray:
-    """Return (H, W) int array: 0-3 for agent states, 4 for empty cells."""
+    """Return (H, W) int array: 0-3 for agent states, 4 for empty cells.
+
+    Out-of-range state values are clamped to the empty-cell sentinel (4).
+    Out-of-bounds positions are silently skipped.
+    """
     grid = np.full((grid_height, grid_width), 4, dtype=int)
     for row in rows:
         x, y, state = int(row["x"]), int(row["y"]), int(row["state"])
+        if not (0 <= state <= 3):
+            state = 4
         if 0 <= y < grid_height and 0 <= x < grid_width:
             grid[y, x] = state
     return grid
@@ -113,9 +119,13 @@ def _state_cmap(dark: bool = False) -> tuple[ListedColormap, BoundaryNorm]:
 
 
 def _draw_cell_grid(
-    ax: object, grid: np.ndarray, cmap: ListedColormap, norm: BoundaryNorm, dark: bool = False
+    ax: plt.Axes,
+    grid: np.ndarray,
+    cmap: ListedColormap,
+    norm: BoundaryNorm,
+    dark: bool = False,
 ) -> object:
-    """Shared renderer: imshow + subtle grid lines."""
+    """Shared renderer: imshow with subtle grid lines on *ax*."""
     img = ax.imshow(grid, cmap=cmap, norm=norm, origin="upper", aspect="equal")
     h, w = grid.shape
     line_color = GRID_LINE_COLOR_DARK if dark else GRID_LINE_COLOR
@@ -130,10 +140,28 @@ def _draw_cell_grid(
     return img
 
 
-def _annotate_significance(ax: object, x1: float, x2: float, text: str, y: float) -> None:
-    """Draw bracket with significance stars between two x-positions."""
-    ax.plot([x1, x1, x2, x2], [y, y + 0.02 * y, y + 0.02 * y, y], color="black", linewidth=1)
-    ax.text((x1 + x2) / 2, y + 0.03 * y, text, ha="center", va="bottom", fontsize=10)
+def _annotate_significance(ax: plt.Axes, x1: float, x2: float, text: str, y: float) -> None:
+    """Draw bracket with significance stars between two x-positions.
+
+    Uses additive offset derived from the axis y-range so the bracket
+    remains visible even when *y* is zero or negative.
+    """
+    ylo, yhi = ax.get_ylim()
+    offset = max(0.02 * (yhi - ylo), 1e-6)
+    ax.plot(
+        [x1, x1, x2, x2],
+        [y, y + offset, y + offset, y],
+        color="black",
+        linewidth=1,
+    )
+    ax.text(
+        (x1 + x2) / 2,
+        y + 1.5 * offset,
+        text,
+        ha="center",
+        va="bottom",
+        fontsize=10,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -490,9 +518,10 @@ def render_metric_distribution(
         ax.set_ylabel(METRIC_LABELS.get(m_name, m_name))
 
         # Significance annotation
-        if stats is not None:
+        non_empty = [d for d in all_data if d]
+        if stats is not None and non_empty:
             metric_stats = stats.get("metric_tests", {}).get(m_name)
-            if metric_stats and len(labels) >= 2:
+            if metric_stats and "P1" in labels and "P2" in labels:
                 p_val = metric_stats.get("p_value_corrected")
                 if p_val is not None:
                     if p_val < 0.001:
@@ -503,10 +532,9 @@ def render_metric_distribution(
                         stars = "*"
                     else:
                         stars = "n.s."
-                    # Find P1 and P2 positions for bracket
-                    p1_idx = labels.index("P1") if "P1" in labels else 0
-                    p2_idx = labels.index("P2") if "P2" in labels else 1
-                    y_max = max(max(d) for d in all_data if d)
+                    p1_idx = labels.index("P1")
+                    p2_idx = labels.index("P2")
+                    y_max = max(max(d) for d in non_empty)
                     _annotate_significance(
                         ax,
                         positions[p1_idx],
@@ -557,7 +585,7 @@ def render_metric_timeseries(
         ax.set_ylabel(METRIC_LABELS.get(metric_name, metric_name))
         ax.grid(True, alpha=0.3)
 
-    if shared_ylim:
+    if shared_ylim and n_phases > 0:
         all_ylims = [axes[0, i].get_ylim() for i in range(n_phases)]
         global_ymin = min(yl[0] for yl in all_ylims)
         global_ymax = max(yl[1] for yl in all_ylims)
@@ -579,7 +607,6 @@ def render_metric_timeseries(
 
 def render_filmstrip(
     simulation_log_path: Path,
-    metrics_summary_path: Path,
     rule_json_path: Path,
     output_path: Path,
     n_frames: int = 6,
@@ -590,13 +617,11 @@ def render_filmstrip(
     """Render horizontal filmstrip of cell-fill panels (dark mode) with step labels."""
     if base_dir is None:
         simulation_log_path = Path(simulation_log_path).resolve()
-        metrics_summary_path = Path(metrics_summary_path).resolve()
         rule_json_path = Path(rule_json_path).resolve()
         output_path = Path(output_path).resolve()
     else:
         base_dir = Path(base_dir).resolve()
         simulation_log_path = _resolve_within_base(Path(simulation_log_path), base_dir)
-        metrics_summary_path = _resolve_within_base(Path(metrics_summary_path), base_dir)
         rule_json_path = _resolve_within_base(Path(rule_json_path), base_dir)
         output_path = _resolve_within_base(Path(output_path), base_dir)
 
@@ -700,11 +725,10 @@ def _build_figure_parser(sub: argparse._SubParsersAction) -> None:
 def _build_filmstrip_parser(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("filmstrip", help="Render filmstrip of simulation frames")
     p.add_argument("--simulation-log", type=Path, required=True)
-    p.add_argument("--metrics-summary", type=Path, required=True)
     p.add_argument("--rule-json", type=Path, required=True)
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--n-frames", type=int, default=6)
-    p.add_argument("--base-dir", type=Path, default=None)
+    p.add_argument("--base-dir", type=Path, default=Path("."))
     p.add_argument("--grid-width", type=int, default=None)
     p.add_argument("--grid-height", type=int, default=None)
 
@@ -793,6 +817,8 @@ def main() -> None:
 
         # Fig 2: MI distribution
         stats_path = getattr(args, "stats_path", None)
+        if stats_path is not None:
+            stats_path = _resolve_within_base(stats_path, base_dir)
         render_metric_distribution(
             phase_data=[
                 (label, pdir / "logs" / "metrics_summary.parquet") for label, pdir in phases
@@ -814,7 +840,6 @@ def main() -> None:
     elif args.command == "filmstrip":
         render_filmstrip(
             simulation_log_path=args.simulation_log,
-            metrics_summary_path=args.metrics_summary,
             rule_json_path=args.rule_json,
             output_path=args.output,
             n_frames=args.n_frames,

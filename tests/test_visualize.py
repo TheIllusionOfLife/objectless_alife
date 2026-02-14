@@ -572,10 +572,10 @@ def test_state_cmap_returns_five_colors() -> None:
 
 
 def test_state_cmap_dark_mode_differs() -> None:
-    cmap_light, _ = _state_cmap(dark=False)
-    cmap_dark, _ = _state_cmap(dark=True)
-    # Empty cell color (index 4) should differ between light and dark
-    assert cmap_light(4) != cmap_dark(4)
+    cmap_light, norm_light = _state_cmap(dark=False)
+    cmap_dark, norm_dark = _state_cmap(dark=True)
+    # Empty cell color (state 4) should differ between light and dark
+    assert cmap_light(norm_light(4)) != cmap_dark(norm_dark(4))
 
 
 # ---------------------------------------------------------------------------
@@ -583,7 +583,7 @@ def test_state_cmap_dark_mode_differs() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_render_snapshot_grid_uses_imshow(tmp_path: Path) -> None:
+def test_render_snapshot_grid_uses_imshow(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     phase_dir = tmp_path / "phase1"
     run_batch_search(
         n_rules=1,
@@ -608,28 +608,24 @@ def test_render_snapshot_grid_uses_imshow(tmp_path: Path) -> None:
         captured_axes.append(axes)
         return fig, axes
 
-    monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(visualize.plt, "subplots", _spy_subplots)
-    try:
-        output_path = tmp_path / "snapshot.png"
-        render_snapshot_grid(
-            phase_configs=[
-                (
-                    "P1",
-                    phase_dir / "logs" / "simulation_log.parquet",
-                    phase_dir / "logs" / "metrics_summary.parquet",
-                    rule_id,
-                ),
-            ],
-            snapshot_steps=[0],
-            output_path=output_path,
-        )
-        # Check that axes contain images (imshow), not just scatter
-        axes = captured_axes[0]
-        ax = axes[0, 0]
-        assert len(ax.images) > 0, "Expected imshow (cell-fill), got no images on axis"
-    finally:
-        monkeypatch.undo()
+    output_path = tmp_path / "snapshot.png"
+    render_snapshot_grid(
+        phase_configs=[
+            (
+                "P1",
+                phase_dir / "logs" / "simulation_log.parquet",
+                phase_dir / "logs" / "metrics_summary.parquet",
+                rule_id,
+            ),
+        ],
+        snapshot_steps=[0],
+        output_path=output_path,
+    )
+    # Check that axes contain images (imshow), not just scatter
+    axes = captured_axes[0]
+    ax = axes[0, 0]
+    assert len(ax.images) > 0, "Expected imshow (cell-fill), got no images on axis"
 
 
 # ---------------------------------------------------------------------------
@@ -683,7 +679,9 @@ def test_render_metric_distribution_with_stats_path(tmp_path: Path) -> None:
     assert output_path.exists()
 
 
-def test_render_metric_distribution_uses_boxplot(tmp_path: Path) -> None:
+def test_render_metric_distribution_uses_boxplot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """After overhaul, distribution should use box plots, not violins."""
     p1_dir = tmp_path / "phase1"
     run_batch_search(
@@ -707,24 +705,20 @@ def test_render_metric_distribution_uses_boxplot(tmp_path: Path) -> None:
         captured_axes.append(axes)
         return fig, axes
 
-    monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(visualize.plt, "subplots", _spy_subplots)
-    try:
-        output_path = tmp_path / "distribution.pdf"
-        render_metric_distribution(
-            phase_data=[
-                ("P1", p1_dir / "logs" / "metrics_summary.parquet"),
-            ],
-            metric_names=["state_entropy"],
-            output_path=output_path,
-        )
-        # After overhaul: scatter strip (collections) should exist
-        axes = captured_axes[0]
-        ax = axes[0, 0]
-        # Box plots create Line2D objects — check that axis has lines
-        assert len(ax.lines) > 0, "Expected box plot lines on axis"
-    finally:
-        monkeypatch.undo()
+    output_path = tmp_path / "distribution.pdf"
+    render_metric_distribution(
+        phase_data=[
+            ("P1", p1_dir / "logs" / "metrics_summary.parquet"),
+        ],
+        metric_names=["state_entropy"],
+        output_path=output_path,
+    )
+    # After overhaul: scatter strip (collections) should exist
+    axes = captured_axes[0]
+    ax = axes[0, 0]
+    # Box plots create Line2D objects — check that axis has lines
+    assert len(ax.lines) > 0, "Expected box plot lines on axis"
 
 
 # ---------------------------------------------------------------------------
@@ -732,7 +726,9 @@ def test_render_metric_distribution_uses_boxplot(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_render_metric_timeseries_shared_ylim(tmp_path: Path) -> None:
+def test_render_metric_timeseries_shared_ylim(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """When shared_ylim=True, all panels should have the same y-axis range."""
     phase_dir = tmp_path / "phase1"
     run_batch_search(
@@ -771,27 +767,23 @@ def test_render_metric_timeseries_shared_ylim(tmp_path: Path) -> None:
         captured_fig.append(fig)
         return fig, axes
 
-    monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(visualize.plt, "subplots", _spy_subplots)
-    try:
-        output_path = tmp_path / "timeseries.pdf"
-        render_metric_timeseries(
-            phase_configs=[
-                ("P1", phase_dir / "logs" / "metrics_summary.parquet", rule_ids),
-                ("P2", phase_dir2 / "logs" / "metrics_summary.parquet", rule_ids2),
-            ],
-            metric_name="state_entropy",
-            output_path=output_path,
-            shared_ylim=True,
-        )
-        fig = captured_fig[0]
-        all_axes = fig.get_axes()
-        ylims = [ax.get_ylim() for ax in all_axes]
-        # All panels should share the same y range
-        for ylim in ylims[1:]:
-            assert ylim == ylims[0], f"Y-axis not shared: {ylim} != {ylims[0]}"
-    finally:
-        monkeypatch.undo()
+    output_path = tmp_path / "timeseries.pdf"
+    render_metric_timeseries(
+        phase_configs=[
+            ("P1", phase_dir / "logs" / "metrics_summary.parquet", rule_ids),
+            ("P2", phase_dir2 / "logs" / "metrics_summary.parquet", rule_ids2),
+        ],
+        metric_name="state_entropy",
+        output_path=output_path,
+        shared_ylim=True,
+    )
+    fig = captured_fig[0]
+    all_axes = fig.get_axes()
+    ylims = [ax.get_ylim() for ax in all_axes]
+    # All panels should share the same y range
+    for ylim in ylims[1:]:
+        assert ylim == ylims[0], f"Y-axis not shared: {ylim} != {ylims[0]}"
 
 
 # ---------------------------------------------------------------------------
@@ -898,7 +890,6 @@ def test_render_filmstrip_creates_png(tmp_path: Path) -> None:
     output_path = tmp_path / "filmstrip.png"
     render_filmstrip(
         simulation_log_path=logs_dir / "simulation_log.parquet",
-        metrics_summary_path=logs_dir / "metrics_summary.parquet",
         rule_json_path=rule_json,
         output_path=output_path,
         n_frames=6,
@@ -938,7 +929,6 @@ def test_render_filmstrip_clamps_n_frames(tmp_path: Path) -> None:
     output_path = tmp_path / "filmstrip.png"
     render_filmstrip(
         simulation_log_path=logs_dir / "simulation_log.parquet",
-        metrics_summary_path=logs_dir / "metrics_summary.parquet",
         rule_json_path=rule_json,
         output_path=output_path,
         n_frames=100,  # Way more than available steps (3)
@@ -957,7 +947,6 @@ def test_render_filmstrip_rejects_paths_outside_base_dir(tmp_path: Path) -> None
     with pytest.raises(ValueError, match="Path escapes base_dir"):
         render_filmstrip(
             simulation_log_path=tmp_path / "logs" / "sim.parquet",
-            metrics_summary_path=tmp_path / "logs" / "metrics.parquet",
             rule_json_path=rule_json,
             output_path=outside_output,
             base_dir=tmp_path,
@@ -1006,8 +995,6 @@ def test_filmstrip_cli_subcommand(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
             "filmstrip",
             "--simulation-log",
             str(logs_dir / "simulation_log.parquet"),
-            "--metrics-summary",
-            str(logs_dir / "metrics_summary.parquet"),
             "--rule-json",
             str(rule_json),
             "--output",
