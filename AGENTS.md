@@ -41,10 +41,20 @@ uv run python -m src.run_search --experiment --phases 1,2 --seed-batches 3 --n-r
 uv run python -m src.run_search --density-sweep --grid-sizes 20x20,30x30 --agent-counts 30,60 --seed-batches 2 --n-rules 100 --steps 200 --out-dir data
 ```
 
-- Visualization CLI:
+- Visualization CLI (subcommands: `single`, `batch`, `figure`, `filmstrip`):
 
 ```bash
-uv run python -m src.visualize --simulation-log data/logs/simulation_log.parquet --metrics-summary data/logs/metrics_summary.parquet --rule-json data/rules/<rule_id>.json --output output/preview.gif --fps 8
+uv run python -m src.visualize single --simulation-log data/logs/simulation_log.parquet --metrics-summary data/logs/metrics_summary.parquet --rule-json data/rules/<rule_id>.json --output output/preview.gif --fps 8
+uv run python -m src.visualize batch --data-dir data/stage_b --top-n 5 --output-dir output/batch
+uv run python -m src.visualize figure --data-dir data/stage_b --output-dir output/figures
+uv run python -m src.visualize filmstrip --simulation-log data/logs/simulation_log.parquet --output output/filmstrip.png --n-frames 8
+```
+
+- Statistical significance testing:
+
+```bash
+uv run python -m src.stats --data-dir data/stage_b
+uv run python -m src.stats --pairwise --dir-a data/stage_b --dir-b data/stage_c
 ```
 
 ## Code Style And Architecture Rules
@@ -58,6 +68,8 @@ uv run python -m src.visualize --simulation-log data/logs/simulation_log.parquet
 - Preserve observation phase compatibility:
   - Phase 1 table size: 20
   - Phase 2 table size: 100
+  - Phase 3 (Control) table size: 100
+  - Phase 4 (Random Walk) table size: 1
 - Do not introduce implicit objectives into filtering/selection logic.
 
 ## Testing And Validation
@@ -107,3 +119,11 @@ Mirror these checks locally before opening a PR.
 - `action` in simulation logs records intended action, not movement success.
 - Sequential random updates mean early agent updates affect later observations in the same step.
 - GIFs in output directory is too big to read. Don't try to read them.
+- **Path security** — validate ALL path inputs against `base_dir`; sanitize components from user input or data files with `Path(user_input).name`.
+- **Empty collection guards** — always check non-empty before aggregation (`max`, `min`, `median`); provide graceful degradation (NaN, skip).
+- **PyArrow performance** — use `pyarrow.compute` functions, not Python loops with `.as_py()`; filter/aggregate on Arrow tables before `.to_pylist()`.
+- **No magic numbers** — extract domain-specific values (action space size, state count) to named module-level constants.
+- **Explicit phase handling** — handle each `ObservationPhase` variant explicitly; use `raise ValueError` in else, never silent fallthrough.
+- **Formula verification** — cross-check statistical formulas against cited references; ensure paper claims match actual data.
+- **Non-square grid safety** — use `grid_height` for y-axis and `grid_width` for x-axis separately; never assume square.
+- **Defensive test coverage** — always test empty/degenerate inputs and boundary cases for new functions.

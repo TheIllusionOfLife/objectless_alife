@@ -22,3 +22,23 @@ htmlcov/
 # Generated outputs
 data/
 output/
+
+# LaTeX artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+
+# Python build artifacts
+dist/
+build/
+*.egg-info/
+
+# Editors/IDEs
+.vscode/
+.idea/
