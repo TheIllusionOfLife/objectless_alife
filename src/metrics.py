@@ -215,7 +215,9 @@ def neighbor_mutual_information(
         p_a = left[state_left] / n
         p_b = right[state_right] / n
         mi += p_ab * math.log2(p_ab / (p_a * p_b))
-    return mi
+    K = len(joint)  # number of non-zero bins in joint distribution
+    correction = (K - 1) / (2 * n * math.log(2))
+    return max(mi - correction, 0.0)
 
 
 def block_ncd(left: bytes, right: bytes) -> float:
