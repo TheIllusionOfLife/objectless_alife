@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import statistics
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,6 +18,38 @@ import pyarrow.parquet as pq
 from scipy.stats import chi2_contingency, mannwhitneyu
 
 from src.run_search import PHASE_SUMMARY_METRIC_NAMES
+
+
+def bootstrap_median_ci(
+    vals1: list[float],
+    vals2: list[float],
+    n_bootstrap: int = 10000,
+    ci_level: float = 0.95,
+    rng: random.Random | None = None,
+) -> tuple[float, float]:
+    """Bootstrap confidence interval for the median difference (vals2 - vals1).
+
+    Returns (lower, upper) percentile interval at the given *ci_level*.
+    """
+    if rng is None:
+        rng = random.Random()
+
+    alpha = 1.0 - ci_level
+    diffs: list[float] = []
+    n1, n2 = len(vals1), len(vals2)
+    for _ in range(n_bootstrap):
+        sample1 = [vals1[rng.randrange(n1)] for _ in range(n1)]
+        sample2 = [vals2[rng.randrange(n2)] for _ in range(n2)]
+        sample1.sort()
+        sample2.sort()
+        med1 = (sample1[n1 // 2] + sample1[(n1 - 1) // 2]) / 2.0
+        med2 = (sample2[n2 // 2] + sample2[(n2 - 1) // 2]) / 2.0
+        diffs.append(med2 - med1)
+
+    diffs.sort()
+    lo_idx = int(n_bootstrap * (alpha / 2.0))
+    hi_idx = int(n_bootstrap * (1.0 - alpha / 2.0)) - 1
+    return diffs[lo_idx], diffs[hi_idx]
 
 
 def load_final_step_metrics(parquet_path: Path) -> pa.Table:
@@ -69,10 +102,15 @@ def phase_comparison_tests(
         # Rank-biserial correlation: r = 1 - (2U)/(n1*n2)
         effect_size_r = 1.0 - (2.0 * u_stat) / (n1 * n2)
 
+        ci_lo, ci_hi = bootstrap_median_ci(vals1, vals2, n_bootstrap=10000)
+
         results[metric] = {
             "u_statistic": float(u_stat),
             "p_value": float(p_value),
             "effect_size_r": float(effect_size_r),
+            "cliffs_delta": float(effect_size_r),
+            "median_diff_ci_lower": float(ci_lo),
+            "median_diff_ci_upper": float(ci_hi),
             "n_phase1": n1,
             "n_phase2": n2,
             "phase1_median": float(statistics.median(vals1)),

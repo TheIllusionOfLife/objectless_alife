@@ -483,11 +483,17 @@ class TestBootstrapMedianCi:
         assert hi1 == hi2
 
     def test_narrows_with_more_samples(self) -> None:
-        """Wider input → wider CI; more data → narrower CI (sanity check)."""
-        small = [float(i) for i in range(10)]
-        large = [float(i) for i in range(200)]
-        lo_s, hi_s = bootstrap_median_ci(small, [x + 5 for x in small], n_bootstrap=2000, rng=random.Random(1))
-        lo_l, hi_l = bootstrap_median_ci(large, [x + 5 for x in large], n_bootstrap=2000, rng=random.Random(1))
+        """More samples from the same distribution → narrower CI."""
+        gen = random.Random(0)
+        base = [gen.gauss(0, 1) for _ in range(500)]
+        small = base[:20]
+        large = base[:200]
+        lo_s, hi_s = bootstrap_median_ci(
+            small, [x + 5 for x in small], n_bootstrap=2000, rng=random.Random(1)
+        )
+        lo_l, hi_l = bootstrap_median_ci(
+            large, [x + 5 for x in large], n_bootstrap=2000, rng=random.Random(1)
+        )
         width_small = hi_s - lo_s
         width_large = hi_l - lo_l
         assert width_large < width_small

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import random
 import statistics
 import zlib
 from collections import Counter
@@ -220,6 +221,42 @@ def neighbor_mutual_information(
     K_right = len(right)
     correction = (K_joint - K_left - K_right + 1) / (2 * n * math.log(2))
     return max(mi - correction, 0.0)
+
+
+def shuffle_null_mi(
+    snapshot: tuple[tuple[int, int, int, int], ...],
+    grid_width: int,
+    grid_height: int,
+    n_shuffles: int = 200,
+    rng: random.Random | None = None,
+) -> float:
+    """Compute mean MI under a state-shuffle null (positions fixed, states permuted).
+
+    For each of *n_shuffles* iterations, randomly reassign states among occupied
+    positions and compute ``neighbor_mutual_information`` on the shuffled
+    snapshot.  Returns the mean MI across all shuffles.  If no neighbor pairs
+    exist, returns 0.0 immediately.
+    """
+    if rng is None:
+        rng = random.Random()
+
+    positions = [(agent_id, x, y) for agent_id, x, y, _ in snapshot]
+    states = [state for _, _, _, state in snapshot]
+
+    if not positions:
+        return 0.0
+
+    mi_sum = 0.0
+    for _ in range(n_shuffles):
+        shuffled_states = states.copy()
+        rng.shuffle(shuffled_states)
+        shuffled_snapshot = tuple(
+            (agent_id, x, y, s)
+            for (agent_id, x, y), s in zip(positions, shuffled_states, strict=True)
+        )
+        mi_sum += neighbor_mutual_information(shuffled_snapshot, grid_width, grid_height)
+
+    return mi_sum / n_shuffles
 
 
 def block_ncd(left: bytes, right: bytes) -> float:

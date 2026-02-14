@@ -4,6 +4,7 @@ import argparse
 import itertools
 import json
 import math
+import random
 from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,6 +30,7 @@ from src.metrics import (
     normalized_hamming_distance,
     quasi_periodicity_peak_count,
     serialize_snapshot,
+    shuffle_null_mi,
     state_entropy,
 )
 from src.rules import ObservationPhase, generate_rule_table
@@ -63,6 +65,7 @@ METRICS_SCHEMA = pa.schema(
         ("action_entropy_mean", pa.float64()),
         ("action_entropy_variance", pa.float64()),
         ("block_ncd", pa.float64()),
+        ("mi_shuffle_null", pa.float64()),
     ]
 )
 PHASE_SUMMARY_METRIC_NAMES = [
@@ -77,6 +80,7 @@ PHASE_SUMMARY_METRIC_NAMES = [
     "action_entropy_mean",
     "action_entropy_variance",
     "block_ncd",
+    "mi_shuffle_null",
 ]
 DENSITY_SWEEP_RUNS_SCHEMA = pa.schema(
     [
@@ -153,6 +157,7 @@ class SearchConfig:
     low_activity_window: int = 5
     low_activity_min_unique_ratio: float = 0.2
     block_ncd_window: int = 10
+    shuffle_null_n_shuffles: int = 200
 
 
 @dataclass(frozen=True)
@@ -338,6 +343,7 @@ def run_batch_search(
                 "action_entropy_mean": [],
                 "action_entropy_variance": [],
                 "block_ncd": [],
+                "mi_shuffle_null": [],
             }
             running_phase_transition_delta = 0.0
             halt_triggered = False
@@ -459,6 +465,14 @@ def run_batch_search(
             metric_columns["quasi_periodicity_peaks"] = [quasi_periodicity_peaks] * len(
                 metric_columns["step"]
             )
+            mi_null = shuffle_null_mi(
+                snapshot,
+                world_cfg.grid_width,
+                world_cfg.grid_height,
+                n_shuffles=search_config.shuffle_null_n_shuffles,
+                rng=random.Random(sim_seed),
+            )
+            metric_columns["mi_shuffle_null"] = [mi_null] * len(metric_columns["step"])
 
             sim_table = pa.Table.from_pydict(sim_columns, schema=SIMULATION_SCHEMA)
             metric_table = pa.Table.from_pydict(metric_columns, schema=METRICS_SCHEMA)
@@ -754,6 +768,7 @@ def _density_metric_columns() -> list[str]:
         "action_entropy_mean",
         "action_entropy_variance",
         "block_ncd",
+        "mi_shuffle_null",
     ]
 
 
@@ -1030,6 +1045,7 @@ def run_experiment(config: ExperimentConfig) -> list[SimulationResult]:
             "action_entropy_mean",
             "action_entropy_variance",
             "block_ncd",
+            "mi_shuffle_null",
         ]
         final_metric_rows = _collect_final_metric_rows(
             metrics_path=metrics_path,
