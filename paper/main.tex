@@ -36,13 +36,13 @@ We propose an objective-free approach based on large-scale random rule generatio
 with physical-inconsistency-only filtering, comparing four observation conditions:
 random walk, a step-clock control, density-only observation, and state-profile observation.
 Across 5{,}000 rules per condition, agents with state-profile observation
-exhibit over 500\% higher median neighbor mutual information than density-only agents
-($p < 10^{-177}$, Mann-Whitney $U$, Holm-Bonferroni corrected), and the
-evidence ladder Control $<$ Phase~1 $<$ Phase~2 holds across all rule-based
-comparisons.
-A random-walk baseline reveals that the naive MI estimator is positively biased
-at low neighbor-pair counts, underscoring the need for spatially aware
-interpretation.
+achieve nonzero median neighbor mutual information (0.084~bits) while
+density-only and control agents remain at zero
+($p < 10^{-280}$, Mann-Whitney $U$, Holm-Bonferroni corrected; $|r|=0.37$),
+and the evidence ladder Control $\leq$ Phase~1 $<$ Phase~2 holds across all
+rule-based comparisons.
+A Miller-Madow bias-corrected MI estimator is used throughout to mitigate
+the positive bias of the naive plug-in estimator at low pair counts.
 These results demonstrate that observation channel richness---not rule table
 capacity or selection pressure---drives the emergence of spatial coordination
 in objective-free systems.
@@ -210,8 +210,13 @@ compute the mutual information between their internal states:
     \log_2 \frac{p(s_i, s_j)}{p(s_i)\,p(s_j)}
 \end{equation}
 where the joint and marginal distributions are estimated from all adjacent
-occupied pairs at a given time step. High MI indicates that neighboring agents'
-states are statistically dependent---a signature of spatial coordination.
+occupied pairs at a given time step. To mitigate the positive bias of the
+plug-in estimator at small sample sizes, we apply the Miller-Madow
+correction~\citep{miller1955note}: $\hat{I}_{\mathrm{MM}} = \hat{I} -
+(K-1)/(2n\ln 2)$, where $K$ is the number of non-zero bins in the joint
+distribution and $n$ is the number of pairs. Values are clamped to $\geq 0$.
+High MI indicates that neighboring agents' states are statistically
+dependent---a signature of spatial coordination.
 
 \paragraph{State entropy.}
 Shannon entropy of the internal state distribution across all agents:
@@ -258,27 +263,29 @@ rule-based conditions, a clear monotonic ordering emerges:
 \begin{table}[htbp]
 \centering
 \caption{Neighbor mutual information summary statistics by condition.
-Values are from final-step metrics (5{,}000 rules generated per condition).
-The random walk's high raw MI reflects small-sample estimation bias
-(see Section~\ref{sec:rw_baseline}), not genuine spatial coordination.}
+All MI values use the Miller-Madow bias-corrected estimator
+(5{,}000 rules generated per condition).
+The random walk's residual MI reflects higher-order bias that the
+first-order correction cannot fully remove at very low pair counts
+(see Section~\ref{sec:rw_baseline}).}
 \label{tab:mi_summary}
 \begin{tabular}{lcccc}
 \toprule
 Condition & Table Size & Median MI & Survival Rate \\
 \midrule
-Random Walk & 1 (unused) & 0.811$^\dagger$ & 100\% \\
+Random Walk & 1 (unused) & 0.360$^\dagger$ & 100\% \\
 Control     & 100        & 0.000       & 44.5\% \\
-Phase 1     & 20         & 0.055       & 71.4\% \\
-Phase 2     & 100        & 0.330       & 74.7\% \\
+Phase 1     & 20         & 0.000       & 71.4\% \\
+Phase 2     & 100        & 0.084       & 74.7\% \\
 \bottomrule
-\multicolumn{4}{l}{\footnotesize $^\dagger$ Inflated by small-sample MI estimation bias; see Section~\ref{sec:rw_baseline}.}
+\multicolumn{4}{l}{\footnotesize $^\dagger$ Residual bias from extremely low pair counts; see Section~\ref{sec:rw_baseline}.}
 \end{tabular}
 \end{table}
 
 The control condition, despite having 100-entry tables (equal to Phase~2),
 produces zero median MI---demonstrating that table size alone is insufficient.
-Phase~2 achieves 500\%+ higher median MI than Phase~1, driven by access to
-neighbor state information.
+Phase~2 is the only rule-based condition with nonzero median MI (0.084~bits),
+driven by access to neighbor state information ($p < 10^{-280}$, $|r|=0.37$).
 
 \begin{figure}[htbp]
 \centering
@@ -293,33 +300,31 @@ Control~$<$~P1~$<$~P2 is clearly visible.}
 \subsection{Random Walk Baseline and MI Estimator Bias}
 \label{sec:rw_baseline}
 
-Contrary to our initial expectation that the random walk would produce
-near-zero MI, the median raw MI for random-walk agents is 0.811---higher
-than all rule-based conditions. This counterintuitive result is explained
-by the positive bias of the naive plug-in MI
-estimator~\citep{cover1991elements}.
+All MI values in this paper use the Miller-Madow bias-corrected
+estimator~\citep{miller1955note}, which subtracts a first-order correction
+term $(K-1)/(2n\ln 2)$ from the naive plug-in estimate, where $K$ is the
+number of non-zero joint bins and $n$ is the number of neighbor pairs.
+Values are clamped to $\geq 0$.
 
-The MI is computed from the empirical joint distribution of state pairs across
-adjacent occupied cells. With 30 agents on a 400-cell grid, the expected
-number of adjacent occupied pairs at any snapshot is small ($\approx$4--5
-at 7.5\% density with uniformly random positions). When MI is estimated from
-so few samples across $4 \times 4 = 16$ joint categories, the estimator
-is dominated by positive finite-sample bias.
+Despite this correction, the random-walk median MI remains elevated at
+0.360~bits (Table~\ref{tab:mi_summary}). This residual bias arises because
+the Miller-Madow correction is a first-order approximation that becomes
+insufficient when $n \approx K$---precisely the regime of random-walk agents,
+where $\approx$4--5 adjacent pairs populate up to 16 joint categories.
 
-Critically, the rule-based conditions produce \emph{more} adjacent pairs
+Crucially, the rule-based conditions produce \emph{more} adjacent pairs
 because rules induce spatial clustering: agents governed by rules tend to
-aggregate, creating denser local neighborhoods with more neighbor pairs.
-More pairs yield less biased MI estimates. Thus, the rule-based conditions'
-\emph{lower} raw MI values reflect both (a) reduced estimation bias and
-(b) the actual degree of state coordination---making their relative ordering
-(Control~$<$~P1~$<$~P2) a robust comparison among conditions with comparable
-spatial structure.
+aggregate, creating denser local neighborhoods. With more pairs, the
+Miller-Madow correction is adequate and the resulting MI values are reliable.
+Both Phase~1 and Control produce zero median MI after correction, confirming
+that their spatial patterns do not carry systematic state coordination.
+Only Phase~2 achieves a nonzero corrected median (0.084~bits), reflecting
+genuine coordination enabled by neighbor state observation.
 
-The random walk baseline remains informative: it establishes that the
-MI estimator alone can produce values up to $\sim$0.8 from pure noise when
-pair counts are low, and it confirms that all 5{,}000 random-walk rules
-survive (100\% survival rate) since random actions never trigger halt or
-state-uniformity filters.
+The random-walk baseline remains informative: it establishes the residual
+bias floor of the corrected estimator under minimal spatial clustering, and
+it confirms that all 5{,}000 random-walk rules survive (100\% survival rate)
+since random actions never trigger halt or state-uniformity filters.
 
 \subsection{Table-Size Confound Resolved}
 
@@ -334,9 +339,9 @@ drives emergent coordination}.
 
 The pairwise comparison confirms this:
 \begin{itemize}
-  \item Phase~1 vs.\ Control: $p < 10^{-223}$, $|r| = 0.331$ (Phase~1
+  \item Phase~1 vs.\ Control: $p < 10^{-44}$, $|r| = 0.111$ (Phase~1
         produces significantly higher MI despite smaller tables)
-  \item Control vs.\ Phase~2: $p \approx 0$, $r = 0.502$ (Phase~2 vastly
+  \item Control vs.\ Phase~2: $p \approx 0$, $|r| = 0.433$ (Phase~2 vastly
         exceeds Control despite equal table size)
 \end{itemize}
 
@@ -390,9 +395,9 @@ disambiguates which group has higher MI.}
 \toprule
 Comparison & Direction & $p$-value & Effect size $|r|$ \\
 \midrule
-P1 vs.\ P2           & P2 $>$ P1      & $< 10^{-177}$ & 0.323 \\
-P1 vs.\ Control      & P1 $>$ Control & $< 10^{-223}$ & 0.331 \\
-Control vs.\ P2      & P2 $>$ Control & $\approx 0$    & 0.502 \\
+P1 vs.\ P2           & P2 $>$ P1      & $< 10^{-280}$ & 0.370 \\
+P1 vs.\ Control      & P1 $>$ Control & $< 10^{-44}$  & 0.111 \\
+Control vs.\ P2      & P2 $>$ Control & $\approx 0$    & 0.433 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -416,12 +421,12 @@ state information, rules frequently drive all agents to the same state.
 Our central finding is that the \emph{content} of observation---specifically,
 access to neighbor state information---is the primary driver of emergent spatial
 coordination. This holds even when controlling for rule table size (the control
-condition). The random-walk baseline, rather than providing a simple geometric
-floor, revealed the positive bias of the naive MI estimator at low pair
-counts---an important methodological insight. The over 500\% increase in
-median MI from Phase~1 to Phase~2
-is not a consequence of having more rules to choose from, but of each rule being
-able to respond to richer local information.
+condition). With the Miller-Madow bias-corrected estimator, Phase~2 is the
+only rule-based condition achieving nonzero median MI (0.084~bits), while
+both Phase~1 and Control fall to zero---making the qualitative separation
+between observation conditions sharper than the uncorrected analysis suggested.
+This result is not a consequence of having more rules to choose from, but of
+each rule being able to respond to richer local information.
 
 \paragraph{Edge-of-chaos interpretation.}
 The temporal dynamics are suggestive of a connection to the edge-of-chaos
@@ -467,14 +472,11 @@ Several limitations constrain the generalizability of our findings:
   \item \textbf{Small state space}: With only 4 internal states and 9 actions,
         the model is deliberately minimal. Scaling to larger state spaces may
         reveal qualitatively different dynamics.
-  \item \textbf{Density fixed}: All experiments use 30 agents on a 400-cell
-        grid (7.5\% density). Robustness across other density levels has not
-        been systematically reported here.
-  \item \textbf{MI estimator bias}: The naive plug-in MI estimator is
-        positively biased when the number of adjacent occupied pairs is small
-        relative to the state-space cardinality. Future work should employ
-        bias-corrected estimators (e.g., Miller-Madow correction) or
-        normalize MI by pair count to enable fair cross-condition comparison.
+  \item \textbf{Density fixed}: The main experiments use 30 agents on a
+        400-cell grid (7.5\% density). Appendix~\ref{app:density_sweep}
+        reports a systematic density sweep across 12 conditions
+        (density range 0.017--0.400), confirming that the Phase~2 MI
+        advantage holds across all tested densities.
   \item \textbf{Sequential update order}: Agents are updated in a random
         permutation each step, creating implicit temporal correlations between
         early and late updates within the same step. Synchronous update
@@ -495,8 +497,9 @@ system through objective-free negative selection, and that the richness of
 agents' observation channels---not rule table capacity---is the critical factor.
 The evidence ladder from step-clock control through density-only to
 state-profile observation demonstrates a monotonic relationship between
-observation content and emergent coordination, while the random-walk baseline
-exposed the MI estimator's sensitivity to spatial density.
+observation content and emergent coordination, confirmed by a
+bias-corrected MI estimator across all tested density levels
+(Appendix~\ref{app:density_sweep}).
 
 Future work should investigate directional information flow using transfer
 entropy, extend to larger grids and state spaces, and explore multi-generation
