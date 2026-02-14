@@ -128,6 +128,32 @@ def test_step_existing_phases_ignore_step_number() -> None:
     assert w1.snapshot() == w2.snapshot()
 
 
+def test_random_walk_produces_valid_actions_ignoring_rule_table() -> None:
+    """RANDOM_WALK must pick actions in [0,8] from RNG, ignoring rule_table contents."""
+    config = WorldConfig(grid_width=10, grid_height=10, num_agents=4, steps=5)
+    world = World(config=config, sim_seed=42)
+    # Dummy single-entry rule table (should never be consulted)
+    rule_table = [8]
+    actions = world.step(rule_table, ObservationPhase.RANDOM_WALK, step_number=0)
+    assert len(actions) == 4
+    assert all(0 <= a <= 8 for a in actions)
+    # At least one action should differ from 8 (no-op) with high probability
+    # given 4 agents and 9 possible actions
+    assert any(a != 8 for a in actions)
+
+
+def test_random_walk_is_deterministic_for_same_seed() -> None:
+    """RANDOM_WALK with same seed must produce identical trajectories."""
+    config = WorldConfig(grid_width=10, grid_height=10, num_agents=4, steps=5)
+    w1 = World(config=config, sim_seed=99)
+    w2 = World(config=config, sim_seed=99)
+    rule_table = [8]
+    for step in range(3):
+        w1.step(rule_table, ObservationPhase.RANDOM_WALK, step_number=step)
+        w2.step(rule_table, ObservationPhase.RANDOM_WALK, step_number=step)
+    assert w1.snapshot() == w2.snapshot()
+
+
 def test_snapshot_and_state_vector_do_not_depend_on_sorted_builtin(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -65,3 +65,13 @@ def test_generate_rule_table_control() -> None:
     table = generate_rule_table(ObservationPhase.CONTROL_DENSITY_CLOCK, seed=42)
     assert len(table) == 100
     assert all(0 <= action <= 8 for action in table)
+
+
+def test_rule_table_size_random_walk() -> None:
+    assert rule_table_size(ObservationPhase.RANDOM_WALK) == 1
+
+
+def test_generate_rule_table_random_walk() -> None:
+    table = generate_rule_table(ObservationPhase.RANDOM_WALK, seed=0)
+    assert len(table) == 1
+    assert all(0 <= action <= 8 for action in table)
