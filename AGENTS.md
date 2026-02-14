@@ -119,7 +119,7 @@ Mirror these checks locally before opening a PR.
 - `action` in simulation logs records intended action, not movement success.
 - Sequential random updates mean early agent updates affect later observations in the same step.
 - GIFs in output directory is too big to read. Don't try to read them.
-- **Path security** — validate ALL path inputs against `base_dir`; sanitize components from user input or data files with `Path().name`.
+- **Path security** — validate ALL path inputs against `base_dir`; sanitize components from user input or data files with `Path(user_input).name`.
 - **Empty collection guards** — always check non-empty before aggregation (`max`, `min`, `median`); provide graceful degradation (NaN, skip).
 - **PyArrow performance** — use `pyarrow.compute` functions, not Python loops with `.as_py()`; filter/aggregate on Arrow tables before `.to_pylist()`.
 - **No magic numbers** — extract domain-specific values (action space size, state count) to named module-level constants.
