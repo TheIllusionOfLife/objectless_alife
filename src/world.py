@@ -143,6 +143,13 @@ class World:
 
         for agent_id in order:
             agent = self.agents[agent_id]
+
+            if phase == ObservationPhase.RANDOM_WALK:
+                action = self.rng.randint(0, 8)
+                actions[agent_id] = action
+                self.apply_action(agent_id=agent_id, action=action)
+                continue
+
             neighbor_states = self._neighbor_states(agent.x, agent.y)
             neighbor_count = len(neighbor_states)
 

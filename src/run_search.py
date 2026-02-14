@@ -1061,7 +1061,7 @@ def _parse_phase(raw_phase: int) -> ObservationPhase:
     try:
         return ObservationPhase(raw_phase)
     except ValueError as exc:
-        raise ValueError("phase must be 1, 2, or 3") from exc
+        raise ValueError("phase must be 1, 2, 3, or 4") from exc
 
 
 def main(argv: list[str] | None = None) -> None:

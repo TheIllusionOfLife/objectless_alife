@@ -12,6 +12,7 @@ class ObservationPhase(Enum):
     PHASE1_DENSITY = 1
     PHASE2_PROFILE = 2
     CONTROL_DENSITY_CLOCK = 3
+    RANDOM_WALK = 4
 
 
 def rule_table_size(phase: ObservationPhase) -> int:
@@ -20,6 +21,8 @@ def rule_table_size(phase: ObservationPhase) -> int:
         return 20
     if phase in (ObservationPhase.PHASE2_PROFILE, ObservationPhase.CONTROL_DENSITY_CLOCK):
         return 100
+    if phase == ObservationPhase.RANDOM_WALK:
+        return 1
     raise ValueError(f"Unsupported observation phase: {phase}")
 
 
