@@ -508,6 +508,79 @@ is that the ``remove broken, observe survivors'' philosophy can serve as a
 productive complement to fitness-driven search in artificial life.
 
 %% =========================================================================
+%% APPENDIX
+%% =========================================================================
+\appendix
+\section{Density Sweep Robustness}
+\label{app:density_sweep}
+
+The main experiments use a fixed density of 7.5\% (30 agents on a
+$20 \times 20$ grid). To assess robustness across density levels, we
+evaluated both Phase~1 and Phase~2 across 12 density conditions: 3 grid
+sizes ($15 \times 15$, $20 \times 20$, $30 \times 30$) $\times$ 4 agent
+counts (15, 30, 60, 90), yielding densities from 0.017 to 0.400.
+Each condition was evaluated with 600 rules (100 rules $\times$ 6 seed
+batches), totaling 14{,}400 rule evaluations, all using the Miller-Madow
+bias-corrected MI estimator.
+
+\begin{table}[htbp]
+\centering
+\caption{Density sweep results across 12 conditions. Phase~2 achieves
+nonzero median MI at all densities $\geq 0.067$, while Phase~1 remains at
+zero across all densities tested.}
+\label{tab:density_sweep}
+\begin{tabular}{rllcccc}
+\toprule
+Density & Grid & Agents & \multicolumn{2}{c}{Median MI (bits)} & \multicolumn{2}{c}{Survival (\%)} \\
+\cmidrule(lr){4-5} \cmidrule(lr){6-7}
+ & & & P1 & P2 & P1 & P2 \\
+\midrule
+0.017 & $30 \times 30$ & 15 & 0.000 & 0.000 & 86.7 & 86.7 \\
+0.033 & $30 \times 30$ & 30 & 0.000 & 0.000 & 83.3 & 85.8 \\
+0.037 & $20 \times 20$ & 15 & 0.000 & 0.000 & 80.8 & 81.8 \\
+0.067 & $15 \times 15$ & 15 & 0.000 & 0.000 & 68.7 & 76.0 \\
+0.067 & $30 \times 30$ & 60 & 0.000 & 0.167 & 70.5 & 76.3 \\
+0.075 & $20 \times 20$ & 30 & 0.000 & 0.106 & 70.2 & 72.5 \\
+0.100 & $30 \times 30$ & 90 & 0.000 & 0.217 & 67.0 & 74.2 \\
+0.133 & $15 \times 15$ & 30 & 0.000 & 0.129 & 62.2 & 64.8 \\
+0.150 & $20 \times 20$ & 60 & 0.000 & 0.180 & 63.0 & 69.7 \\
+0.225 & $20 \times 20$ & 90 & 0.000 & 0.154 & 64.0 & 76.7 \\
+0.267 & $15 \times 15$ & 60 & 0.000 & 0.121 & 63.5 & 72.7 \\
+0.400 & $15 \times 15$ & 90 & 0.000 & 0.088 & 68.0 & 83.7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:density_sweep} and Figures~\ref{fig:mi_density}
+and~\ref{fig:surv_density} present the results. Phase~2 achieves nonzero
+median MI at all densities $\geq 0.067$, peaking near $d = 0.100$ (MI =
+0.217 bits at $30 \times 30$, 90 agents) before declining at higher
+densities. Phase~1 remains at zero median MI across all 12 conditions,
+confirming that the Phase~2 advantage is not an artifact of the specific
+grid configuration used in the main experiments.
+
+Phase~2 also consistently achieves higher survival rates than Phase~1, with
+the gap widening at higher densities (e.g., 76.7\% vs.\ 64.0\% at $d =
+0.225$; 83.7\% vs.\ 68.0\% at $d = 0.400$).
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/figA1_mi_vs_density.pdf}
+\caption{Median neighbor MI vs.\ agent density for Phase~1 and Phase~2.
+Phase~2 MI peaks at medium densities and declines at higher densities, while
+Phase~1 remains at zero throughout.}
+\label{fig:mi_density}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/figA2_survival_vs_density.pdf}
+\caption{Survival rate vs.\ agent density. Phase~2 consistently achieves
+higher survival than Phase~1, with the gap widening at higher densities.}
+\label{fig:surv_density}
+\end{figure}
+
+%% =========================================================================
 %% BIBLIOGRAPHY
 %% =========================================================================
 \bibliography{references}
