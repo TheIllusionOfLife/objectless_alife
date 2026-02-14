@@ -12,12 +12,13 @@ import pyarrow.parquet as pq
 from matplotlib import animation
 from matplotlib.colors import BoundaryNorm, ListedColormap
 from matplotlib.gridspec import GridSpec
+from matplotlib.patches import Patch
 
 from src.stats import load_final_step_metrics
 
 METRIC_LABELS: dict[str, str] = {
     "state_entropy": "State Entropy",
-    "neighbor_mutual_information": "Neighbor MI",
+    "neighbor_mutual_information": "Neighbor Mutual Information",
     "compression_ratio": "Compression Ratio",
     "morans_i": "Moran's I",
     "cluster_count": "Cluster Count",
@@ -47,6 +48,12 @@ PHASE_COLORS: dict[str, str] = {
     "P1": "tab:blue",
     "P2": "tab:red",
     "Control": "tab:gray",
+}
+
+PHASE_DESCRIPTIONS: dict[str, str] = {
+    "P1": "Phase 1 (density)",
+    "P2": "Phase 2 (state profile)",
+    "Control": "Control (random)",
 }
 
 STATE_COLORS: list[str] = ["#2196F3", "#FF5722", "#4CAF50", "#FFC107"]
@@ -116,6 +123,16 @@ def _state_cmap(dark: bool = False) -> tuple[ListedColormap, BoundaryNorm]:
     cmap = ListedColormap(colors)
     norm = BoundaryNorm([-0.5, 0.5, 1.5, 2.5, 3.5, 4.5], cmap.N)
     return cmap, norm
+
+
+def _build_state_legend_handles(dark: bool = False) -> list[Patch]:
+    """Build legend patch handles for the 4 agent states and empty cells."""
+    empty = EMPTY_CELL_COLOR_DARK if dark else EMPTY_CELL_COLOR
+    handles = [
+        Patch(facecolor=c, edgecolor="gray", label=f"State {i}") for i, c in enumerate(STATE_COLORS)
+    ]
+    handles.append(Patch(facecolor=empty, edgecolor="gray", label="Empty"))
+    return handles
 
 
 def _draw_cell_grid(
@@ -439,10 +456,19 @@ def render_snapshot_grid(
             if row_idx == 0:
                 ax.set_title(f"Step {target_step}", fontsize=10)
             if col_idx == 0:
-                mi_str = f" (MI={mi_val:.3f})" if mi_val is not None else ""
-                ax.set_ylabel(f"{label}{mi_str}", fontsize=10)
+                desc = PHASE_DESCRIPTIONS.get(label, label)
+                mi_str = f"\n(MI = {mi_val:.3f})" if mi_val is not None else ""
+                ax.set_ylabel(f"{desc}{mi_str}", fontsize=9)
 
-    fig.tight_layout()
+    handles = _build_state_legend_handles(dark=False)
+    fig.legend(
+        handles=handles,
+        loc="lower center",
+        ncol=5,
+        fontsize=8,
+        frameon=False,
+    )
+    fig.tight_layout(rect=[0, 0.06, 1, 1])
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=300)
@@ -543,6 +569,18 @@ def render_metric_distribution(
                         y_max * 1.05,
                     )
 
+    if stats is not None:
+        fig.text(
+            0.99,
+            0.01,
+            "* p < 0.05   ** p < 0.01   *** p < 0.001",
+            ha="right",
+            va="bottom",
+            fontsize=7,
+            color="gray",
+            transform=fig.transFigure,
+        )
+
     fig.tight_layout()
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -580,7 +618,7 @@ def render_metric_timeseries(
             ]
             ax.plot(steps, vals, color=color, alpha=0.4, linewidth=1.8)
 
-        ax.set_title(f"{label}")
+        ax.set_title(PHASE_DESCRIPTIONS.get(label, label))
         ax.set_xlabel("Step")
         ax.set_ylabel(METRIC_LABELS.get(metric_name, metric_name))
         ax.grid(True, alpha=0.3)
@@ -672,7 +710,16 @@ def render_filmstrip(
         ax.set_title(f"Step {step}", fontsize=9, color="white")
 
     fig.suptitle(f"Rule: {rule_id}", fontsize=11, color="white")
-    fig.tight_layout()
+    handles = _build_state_legend_handles(dark=True)
+    fig.legend(
+        handles=handles,
+        loc="lower center",
+        ncol=5,
+        fontsize=8,
+        frameon=False,
+        labelcolor="white",
+    )
+    fig.tight_layout(rect=[0, 0.10, 1, 0.95])
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=200, facecolor=fig.get_facecolor())

@@ -1031,9 +1031,7 @@ def test_phase_descriptions_defined() -> None:
         assert len(PHASE_DESCRIPTIONS[key]) > len(key)
 
 
-def test_snapshot_grid_has_state_legend(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_snapshot_grid_has_state_legend(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Snapshot grid figure should include a color legend for agent states."""
     phase_dir = tmp_path / "phase1"
     run_batch_search(
@@ -1077,9 +1075,7 @@ def test_snapshot_grid_has_state_legend(
     assert len(fig.legends) > 0, "Expected state color legend on snapshot grid"
 
 
-def test_filmstrip_has_state_legend(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_filmstrip_has_state_legend(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Filmstrip figure should include a color legend for agent states."""
     rule_id = "phase1_rs1_ss1"
     rule_json = tmp_path / "rules" / f"{rule_id}.json"
@@ -1198,9 +1194,7 @@ def test_metric_distribution_has_significance_key(
     fig = captured_fig[0]
     fig_texts = [t.get_text() for t in fig.texts]
     has_key = any("p" in t and "<" in t for t in fig_texts)
-    assert has_key, (
-        f"Expected significance key (p < ...) in figure texts, got: {fig_texts}"
-    )
+    assert has_key, f"Expected significance key (p < ...) in figure texts, got: {fig_texts}"
 
 
 def test_timeseries_uses_phase_descriptions(
@@ -1246,6 +1240,4 @@ def test_timeseries_uses_phase_descriptions(
     ax = fig.get_axes()[0]
     title = ax.get_title()
     expected = PHASE_DESCRIPTIONS["P1"]
-    assert expected in title, (
-        f"Expected '{expected}' in title, got: '{title}'"
-    )
+    assert expected in title, f"Expected '{expected}' in title, got: '{title}'"
