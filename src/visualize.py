@@ -7,15 +7,18 @@ import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pyarrow.parquet as pq
 from matplotlib import animation
+from matplotlib.colors import BoundaryNorm, ListedColormap
 from matplotlib.gridspec import GridSpec
+from matplotlib.patches import Patch
 
 from src.stats import load_final_step_metrics
 
 METRIC_LABELS: dict[str, str] = {
     "state_entropy": "State Entropy",
-    "neighbor_mutual_information": "Neighbor MI",
+    "neighbor_mutual_information": "Neighbor Mutual Information",
     "compression_ratio": "Compression Ratio",
     "morans_i": "Moran's I",
     "cluster_count": "Cluster Count",
@@ -47,6 +50,18 @@ PHASE_COLORS: dict[str, str] = {
     "Control": "tab:gray",
 }
 
+PHASE_DESCRIPTIONS: dict[str, str] = {
+    "P1": "Phase 1 (density)",
+    "P2": "Phase 2 (state profile)",
+    "Control": "Control (random)",
+}
+
+STATE_COLORS: list[str] = ["#2196F3", "#FF5722", "#4CAF50", "#FFC107"]
+EMPTY_CELL_COLOR: str = "#F0F0F0"
+EMPTY_CELL_COLOR_DARK: str = "#1A1A1A"
+GRID_LINE_COLOR: str = "#CCCCCC"
+GRID_LINE_COLOR_DARK: str = "#333333"
+
 _SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9_\-]+$")
 
 
@@ -76,6 +91,94 @@ def _resolve_grid_dimension(
         return from_metadata
 
     return max(int(row[axis_key]) for row in rows) + 1
+
+
+# ---------------------------------------------------------------------------
+# Cell-fill helpers
+# ---------------------------------------------------------------------------
+
+
+def _build_grid_array(
+    rows: list[dict[str, object]], grid_width: int, grid_height: int
+) -> np.ndarray:
+    """Return (H, W) int array: 0-3 for agent states, 4 for empty cells.
+
+    Out-of-range state values are clamped to the empty-cell sentinel (4).
+    Out-of-bounds positions are silently skipped.
+    """
+    grid = np.full((grid_height, grid_width), 4, dtype=int)
+    for row in rows:
+        x, y, state = int(row["x"]), int(row["y"]), int(row["state"])
+        if not (0 <= state <= 3):
+            state = 4
+        if 0 <= y < grid_height and 0 <= x < grid_width:
+            grid[y, x] = state
+    return grid
+
+
+def _state_cmap(dark: bool = False) -> tuple[ListedColormap, BoundaryNorm]:
+    """Discrete 5-color colormap (4 states + empty cell)."""
+    empty = EMPTY_CELL_COLOR_DARK if dark else EMPTY_CELL_COLOR
+    colors = STATE_COLORS + [empty]
+    cmap = ListedColormap(colors)
+    norm = BoundaryNorm([-0.5, 0.5, 1.5, 2.5, 3.5, 4.5], cmap.N)
+    return cmap, norm
+
+
+def _build_state_legend_handles(dark: bool = False) -> list[Patch]:
+    """Build legend patch handles for the 4 agent states and empty cells."""
+    empty = EMPTY_CELL_COLOR_DARK if dark else EMPTY_CELL_COLOR
+    handles = [
+        Patch(facecolor=c, edgecolor="gray", label=f"State {i}") for i, c in enumerate(STATE_COLORS)
+    ]
+    handles.append(Patch(facecolor=empty, edgecolor="gray", label="Empty"))
+    return handles
+
+
+def _draw_cell_grid(
+    ax: plt.Axes,
+    grid: np.ndarray,
+    cmap: ListedColormap,
+    norm: BoundaryNorm,
+    dark: bool = False,
+) -> object:
+    """Shared renderer: imshow with subtle grid lines on *ax*."""
+    img = ax.imshow(grid, cmap=cmap, norm=norm, origin="upper", aspect="equal")
+    h, w = grid.shape
+    line_color = GRID_LINE_COLOR_DARK if dark else GRID_LINE_COLOR
+    for x in range(w + 1):
+        ax.axvline(x - 0.5, color=line_color, linewidth=0.5)
+    for y in range(h + 1):
+        ax.axhline(y - 0.5, color=line_color, linewidth=0.5)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    if dark:
+        ax.set_facecolor(EMPTY_CELL_COLOR_DARK)
+    return img
+
+
+def _annotate_significance(ax: plt.Axes, x1: float, x2: float, text: str, y: float) -> None:
+    """Draw bracket with significance stars between two x-positions.
+
+    Uses additive offset derived from the axis y-range so the bracket
+    remains visible even when *y* is zero or negative.
+    """
+    ylo, yhi = ax.get_ylim()
+    offset = max(0.02 * (yhi - ylo), 1e-6)
+    ax.plot(
+        [x1, x1, x2, x2],
+        [y, y + offset, y + offset, y],
+        color="black",
+        linewidth=1,
+    )
+    ax.text(
+        (x1 + x2) / 2,
+        y + 1.5 * offset,
+        text,
+        ha="center",
+        va="bottom",
+        fontsize=10,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -199,12 +302,12 @@ def render_rule_animation(
         ax_world = fig.add_subplot(gs[:, 0])
         metric_axes = [fig.add_subplot(gs[i, 1]) for i in range(n_metrics)]
 
-    scatter = ax_world.scatter([], [], c=[], cmap="viridis", vmin=0, vmax=3, s=80)
+    cmap, norm = _state_cmap(dark=True)
+    init_grid = _build_grid_array(by_step[steps[0]], resolved_width, resolved_height)
+    img = _draw_cell_grid(ax_world, init_grid, cmap, norm, dark=True)
     ax_world.set_xlim(-0.5, resolved_width - 0.5)
-    ax_world.set_ylim(-0.5, resolved_height - 0.5)
+    ax_world.set_ylim(resolved_height - 0.5, -0.5)
     ax_world.set_title("Agent States")
-    ax_world.set_aspect("equal")
-    ax_world.invert_yaxis()
 
     x_max = max(steps)
     metric_values_list: list[list[float]] = []
@@ -230,16 +333,13 @@ def render_rule_animation(
     def update(frame_index: int) -> tuple[object, ...]:
         step = steps[frame_index]
         rows = by_step[step]
-        xs = [float(row["x"]) for row in rows]
-        ys = [float(row["y"]) for row in rows]
-        states = [float(row["state"]) for row in rows]
-        scatter.set_offsets(list(zip(xs, ys, strict=True)))
-        scatter.set_array(states)
+        grid = _build_grid_array(rows, resolved_width, resolved_height)
+        img.set_data(grid)
         ax_world.set_title(f"Agent States (step={step})")
 
         for line, values in zip(metric_lines, metric_values_list, strict=True):
             line.set_data(steps[: frame_index + 1], values[: frame_index + 1])
-        return (scatter, *metric_lines)
+        return (img, *metric_lines)
 
     anim = animation.FuncAnimation(
         fig, update, frames=len(steps), interval=max(1, int(1000 / fps)), blit=False
@@ -319,11 +419,12 @@ def render_snapshot_grid(
     grid_width: int = 20,
     grid_height: int = 20,
 ) -> None:
-    """Render (n_phases x n_steps) grid of agent position scatter plots."""
+    """Render (n_phases x n_steps) grid of cell-fill agent state panels."""
     n_phases = len(phase_configs)
     n_steps = len(snapshot_steps)
 
     fig, axes = plt.subplots(n_phases, n_steps, figsize=(3 * n_steps, 3 * n_phases), squeeze=False)
+    cmap, norm = _state_cmap(dark=False)
 
     for row_idx, (label, sim_log_path, metrics_path, rule_id) in enumerate(phase_configs):
         sim_rows = pq.read_table(sim_log_path, filters=[("rule_id", "=", rule_id)]).to_pylist()
@@ -349,24 +450,25 @@ def render_snapshot_grid(
             # Find nearest available step
             actual_step = min(available_steps, key=lambda s: abs(s - target_step))
             rows = by_step[actual_step]
-            xs = [float(r["x"]) for r in rows]
-            ys = [float(r["y"]) for r in rows]
-            states = [float(r["state"]) for r in rows]
-            ax.scatter(xs, ys, c=states, cmap="viridis", vmin=0, vmax=3, s=20)
-            ax.set_xlim(-0.5, grid_width - 0.5)
-            ax.set_ylim(-0.5, grid_height - 0.5)
-            ax.set_aspect("equal")
-            ax.invert_yaxis()
-            ax.set_xticks([])
-            ax.set_yticks([])
+            grid = _build_grid_array(rows, grid_width, grid_height)
+            _draw_cell_grid(ax, grid, cmap, norm, dark=False)
 
             if row_idx == 0:
                 ax.set_title(f"Step {target_step}", fontsize=10)
             if col_idx == 0:
-                mi_str = f" (MI={mi_val:.3f})" if mi_val is not None else ""
-                ax.set_ylabel(f"{label}{mi_str}", fontsize=10)
+                desc = PHASE_DESCRIPTIONS.get(label, label)
+                mi_str = f"\n(MI = {mi_val:.3f})" if mi_val is not None else ""
+                ax.set_ylabel(f"{desc}{mi_str}", fontsize=9)
 
-    fig.tight_layout()
+    handles = _build_state_legend_handles(dark=False)
+    fig.legend(
+        handles=handles,
+        loc="lower center",
+        ncol=5,
+        fontsize=8,
+        frameon=False,
+    )
+    fig.tight_layout(rect=[0, 0.06, 1, 1])
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=300)
@@ -382,10 +484,15 @@ def render_metric_distribution(
     phase_data: list[tuple[str, Path]],
     metric_names: list[str],
     output_path: Path,
+    stats_path: Path | None = None,
 ) -> None:
-    """Violin plots comparing metric distributions across phases."""
+    """Phase-colored box plots with scatter strip and optional significance brackets."""
     n_metrics = len(metric_names)
     fig, axes = plt.subplots(1, n_metrics, figsize=(4 * n_metrics, 5), squeeze=False)
+
+    stats: dict[str, object] | None = None
+    if stats_path is not None:
+        stats = json.loads(Path(stats_path).read_text())
 
     for m_idx, m_name in enumerate(metric_names):
         ax = axes[0, m_idx]
@@ -402,17 +509,77 @@ def render_metric_distribution(
             all_data.append(vals)
             labels.append(label)
 
-        # Only create violin if we have data
-        non_empty = [d for d in all_data if d]
-        if non_empty:
-            ax.violinplot(non_empty, showmedians=True)
-            ax.set_xticks(range(1, len(non_empty) + 1))
-            # Map xticks to labels of non-empty datasets
-            non_empty_labels = [lb for lb, d in zip(labels, all_data, strict=True) if d]
-            ax.set_xticklabels(non_empty_labels)
+        # Phase-colored box plots + scatter strip
+        positions = list(range(1, len(all_data) + 1))
+        for i, (data, label) in enumerate(zip(all_data, labels, strict=True)):
+            if not data:
+                continue
+            pos = positions[i]
+            color = PHASE_COLORS.get(label, "tab:blue")
+            bp = ax.boxplot(
+                [data],
+                positions=[pos],
+                widths=0.5,
+                patch_artist=True,
+                medianprops={"color": "white", "linewidth": 1.5},
+            )
+            for patch in bp["boxes"]:
+                patch.set_facecolor(color)
+                patch.set_alpha(0.7)
+            # Scatter strip overlay
+            rng = np.random.default_rng(seed=i)
+            jitter = rng.uniform(-0.15, 0.15, size=len(data))
+            ax.scatter(
+                [pos + j for j in jitter],
+                data,
+                color=color,
+                alpha=0.3,
+                s=8,
+                zorder=3,
+            )
 
+        ax.set_xticks(positions)
+        ax.set_xticklabels(labels)
         ax.set_title(METRIC_LABELS.get(m_name, m_name))
         ax.set_ylabel(METRIC_LABELS.get(m_name, m_name))
+
+        # Significance annotation
+        non_empty = [d for d in all_data if d]
+        if stats is not None and non_empty:
+            metric_stats = stats.get("metric_tests", {}).get(m_name)
+            if metric_stats and "P1" in labels and "P2" in labels:
+                p_val = metric_stats.get("p_value_corrected")
+                if p_val is not None:
+                    if p_val < 0.001:
+                        stars = "***"
+                    elif p_val < 0.01:
+                        stars = "**"
+                    elif p_val < 0.05:
+                        stars = "*"
+                    else:
+                        stars = "n.s."
+                    p1_idx = labels.index("P1")
+                    p2_idx = labels.index("P2")
+                    y_max = max(max(d) for d in non_empty)
+                    _annotate_significance(
+                        ax,
+                        positions[p1_idx],
+                        positions[p2_idx],
+                        stars,
+                        y_max * 1.05,
+                    )
+
+    if stats is not None:
+        fig.text(
+            0.99,
+            0.01,
+            "* p < 0.05   ** p < 0.01   *** p < 0.001",
+            ha="right",
+            va="bottom",
+            fontsize=7,
+            color="gray",
+            transform=fig.transFigure,
+        )
 
     fig.tight_layout()
     output_path = Path(output_path)
@@ -430,6 +597,7 @@ def render_metric_timeseries(
     phase_configs: list[tuple[str, Path, list[str]]],
     metric_name: str,
     output_path: Path,
+    shared_ylim: bool = True,
 ) -> None:
     """Time-series overlay of metric trajectories per phase."""
     n_phases = len(phase_configs)
@@ -448,17 +616,114 @@ def render_metric_timeseries(
                 float(r.get(metric_name, 0.0) or 0.0)
                 for r in sorted(metric_rows, key=lambda r: int(r["step"]))
             ]
-            ax.plot(steps, vals, color=color, alpha=0.6, linewidth=1)
+            ax.plot(steps, vals, color=color, alpha=0.4, linewidth=1.8)
 
-        ax.set_title(f"{label}")
+        ax.set_title(PHASE_DESCRIPTIONS.get(label, label))
         ax.set_xlabel("Step")
         ax.set_ylabel(METRIC_LABELS.get(metric_name, metric_name))
+        ax.grid(True, alpha=0.3)
+
+    if shared_ylim and n_phases > 0:
+        all_ylims = [axes[0, i].get_ylim() for i in range(n_phases)]
+        global_ymin = min(yl[0] for yl in all_ylims)
+        global_ymax = max(yl[1] for yl in all_ylims)
+        for i in range(n_phases):
+            axes[0, i].set_ylim(global_ymin, global_ymax)
 
     fig.suptitle(METRIC_LABELS.get(metric_name, metric_name), fontsize=14)
     fig.tight_layout()
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=300)
+    plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+# render_filmstrip
+# ---------------------------------------------------------------------------
+
+
+def render_filmstrip(
+    simulation_log_path: Path,
+    rule_json_path: Path,
+    output_path: Path,
+    n_frames: int = 6,
+    base_dir: Path | None = None,
+    grid_width: int | None = None,
+    grid_height: int | None = None,
+) -> None:
+    """Render horizontal filmstrip of cell-fill panels (dark mode) with step labels."""
+    if base_dir is None:
+        simulation_log_path = Path(simulation_log_path).resolve()
+        rule_json_path = Path(rule_json_path).resolve()
+        output_path = Path(output_path).resolve()
+    else:
+        base_dir = Path(base_dir).resolve()
+        simulation_log_path = _resolve_within_base(Path(simulation_log_path), base_dir)
+        rule_json_path = _resolve_within_base(Path(rule_json_path), base_dir)
+        output_path = _resolve_within_base(Path(output_path), base_dir)
+
+    rule_payload = json.loads(rule_json_path.read_text())
+    rule_id = rule_payload.get("rule_id")
+    if not isinstance(rule_id, str) or not rule_id:
+        raise ValueError("Rule JSON must include non-empty string field 'rule_id'")
+
+    sim_rows = pq.read_table(simulation_log_path, filters=[("rule_id", "=", rule_id)]).to_pylist()
+    if not sim_rows:
+        raise ValueError(f"No simulation rows found for rule_id={rule_id}")
+
+    steps = sorted({int(row["step"]) for row in sim_rows})
+    by_step: dict[int, list[dict[str, object]]] = {step: [] for step in steps}
+    for row in sim_rows:
+        by_step[int(row["step"])].append(row)
+
+    raw_metadata = rule_payload.get("metadata")
+    metadata = raw_metadata if isinstance(raw_metadata, dict) else {}
+    resolved_width = _resolve_grid_dimension(
+        explicit=grid_width,
+        metadata=metadata,
+        metadata_key="grid_width",
+        rows=sim_rows,
+        axis_key="x",
+    )
+    resolved_height = _resolve_grid_dimension(
+        explicit=grid_height,
+        metadata=metadata,
+        metadata_key="grid_height",
+        rows=sim_rows,
+        axis_key="y",
+    )
+
+    if n_frames < 1:
+        raise ValueError("n_frames must be >= 1")
+    actual_n = max(1, min(n_frames, len(steps)))
+    indices = [int(i * (len(steps) - 1) / max(1, actual_n - 1)) for i in range(actual_n)]
+    selected_steps = [steps[i] for i in indices]
+
+    cmap, norm = _state_cmap(dark=True)
+    fig, axes = plt.subplots(1, actual_n, figsize=(3 * actual_n, 3), squeeze=False)
+    fig.patch.set_facecolor(EMPTY_CELL_COLOR_DARK)
+
+    for col_idx, step in enumerate(selected_steps):
+        ax = axes[0, col_idx]
+        grid = _build_grid_array(by_step[step], resolved_width, resolved_height)
+        _draw_cell_grid(ax, grid, cmap, norm, dark=True)
+        ax.set_title(f"Step {step}", fontsize=9, color="white")
+
+    fig.suptitle(f"Rule: {rule_id}", fontsize=11, color="white")
+    handles = _build_state_legend_handles(dark=True)
+    fig.legend(
+        handles=handles,
+        loc="lower center",
+        ncol=5,
+        fontsize=8,
+        frameon=False,
+        labelcolor="white",
+    )
+    fig.tight_layout(rect=[0, 0.10, 1, 0.95])
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=200, facecolor=fig.get_facecolor())
     plt.close(fig)
 
 
@@ -502,6 +767,18 @@ def _build_figure_parser(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--output-dir", type=Path, required=True)
     p.add_argument("--top-n", type=int, default=3)
     p.add_argument("--base-dir", type=Path, default=Path("."))
+    p.add_argument("--stats-path", type=Path, default=None)
+
+
+def _build_filmstrip_parser(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser("filmstrip", help="Render filmstrip of simulation frames")
+    p.add_argument("--simulation-log", type=Path, required=True)
+    p.add_argument("--rule-json", type=Path, required=True)
+    p.add_argument("--output", type=Path, required=True)
+    p.add_argument("--n-frames", type=int, default=6)
+    p.add_argument("--base-dir", type=Path, default=Path("."))
+    p.add_argument("--grid-width", type=int, default=None)
+    p.add_argument("--grid-height", type=int, default=None)
 
 
 def _parse_phase_dirs(raw: list[str]) -> list[tuple[str, Path]]:
@@ -521,6 +798,7 @@ def main() -> None:
     _build_single_parser(sub)
     _build_batch_parser(sub)
     _build_figure_parser(sub)
+    _build_filmstrip_parser(sub)
     args = parser.parse_args()
 
     if args.command == "single":
@@ -586,12 +864,16 @@ def main() -> None:
         )
 
         # Fig 2: MI distribution
+        stats_path = getattr(args, "stats_path", None)
+        if stats_path is not None:
+            stats_path = _resolve_within_base(stats_path, base_dir)
         render_metric_distribution(
             phase_data=[
                 (label, pdir / "logs" / "metrics_summary.parquet") for label, pdir in phases
             ],
             metric_names=["neighbor_mutual_information"],
             output_path=output_dir / "fig2_mi_distribution.pdf",
+            stats_path=stats_path,
         )
 
         # Fig 3: MI time-series (top-3 rules per phase)
@@ -602,6 +884,16 @@ def main() -> None:
             ],
             metric_name="neighbor_mutual_information",
             output_path=output_dir / "fig3_mi_timeseries.pdf",
+        )
+    elif args.command == "filmstrip":
+        render_filmstrip(
+            simulation_log_path=args.simulation_log,
+            rule_json_path=args.rule_json,
+            output_path=args.output,
+            n_frames=args.n_frames,
+            base_dir=args.base_dir,
+            grid_width=args.grid_width,
+            grid_height=args.grid_height,
         )
 
 
