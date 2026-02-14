@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import random
 from pathlib import Path
 
 import pyarrow as pa
@@ -11,6 +12,7 @@ import pytest
 from src.run_search import METRICS_SCHEMA, PHASE_SUMMARY_METRIC_NAMES
 from src.stats import (
     _holm_bonferroni,
+    bootstrap_median_ci,
     load_final_step_metrics,
     pairwise_metric_comparison,
     pairwise_survival_comparison,
@@ -460,6 +462,53 @@ class TestPairwiseSurvivalComparison:
         assert result["a_total"] == 0
         assert math.isnan(result["chi2"])
         assert math.isnan(result["p_value"])
+
+
+class TestBootstrapMedianCi:
+    def test_contains_true_median_diff(self) -> None:
+        """CI should cover the known median difference for clearly separated groups."""
+        rng = random.Random(42)
+        vals1 = [float(i) for i in range(100)]
+        vals2 = [float(i + 50) for i in range(100)]
+        lo, hi = bootstrap_median_ci(vals1, vals2, n_bootstrap=5000, rng=rng)
+        true_diff = 50.0  # median(vals2) - median(vals1)
+        assert lo <= true_diff <= hi
+
+    def test_deterministic_with_seed(self) -> None:
+        vals1 = [1.0, 2.0, 3.0, 4.0, 5.0]
+        vals2 = [6.0, 7.0, 8.0, 9.0, 10.0]
+        lo1, hi1 = bootstrap_median_ci(vals1, vals2, n_bootstrap=1000, rng=random.Random(7))
+        lo2, hi2 = bootstrap_median_ci(vals1, vals2, n_bootstrap=1000, rng=random.Random(7))
+        assert lo1 == lo2
+        assert hi1 == hi2
+
+    def test_narrows_with_more_samples(self) -> None:
+        """Wider input → wider CI; more data → narrower CI (sanity check)."""
+        small = [float(i) for i in range(10)]
+        large = [float(i) for i in range(200)]
+        lo_s, hi_s = bootstrap_median_ci(small, [x + 5 for x in small], n_bootstrap=2000, rng=random.Random(1))
+        lo_l, hi_l = bootstrap_median_ci(large, [x + 5 for x in large], n_bootstrap=2000, rng=random.Random(1))
+        width_small = hi_s - lo_s
+        width_large = hi_l - lo_l
+        assert width_large < width_small
+
+
+class TestPhaseComparisonCiAndCliffsDelta:
+    def _make_table(self, values: list[float], metric: str = "neighbor_mutual_information"):
+        data = {m: [None] * len(values) for m in PHASE_SUMMARY_METRIC_NAMES}
+        data[metric] = values
+        return pa.table(data)
+
+    def test_phase_comparison_includes_ci_and_cliffs_delta(self) -> None:
+        """New fields present in phase_comparison_tests output."""
+        p1 = self._make_table([0.1, 0.2, 0.3, 0.15, 0.25])
+        p2 = self._make_table([0.4, 0.5, 0.6, 0.45, 0.55])
+        result = phase_comparison_tests(p1, p2, ["neighbor_mutual_information"])
+        entry = result["neighbor_mutual_information"]
+        assert "cliffs_delta" in entry
+        assert "median_diff_ci_lower" in entry
+        assert "median_diff_ci_upper" in entry
+        assert entry["median_diff_ci_lower"] <= entry["median_diff_ci_upper"]
 
 
 class TestStatsMainPairwise:

@@ -8,6 +8,8 @@ from src.filters import ACTION_SPACE_SIZE
 from src.metrics import action_entropy
 from src.rules import ObservationPhase
 from src.run_search import (
+    METRICS_SCHEMA,
+    PHASE_SUMMARY_METRIC_NAMES,
     DensitySweepConfig,
     ExperimentConfig,
     SearchConfig,
@@ -618,6 +620,32 @@ def test_run_batch_search_control_phase_produces_valid_artifacts(tmp_path: Path)
 
 def test_parse_phase_returns_control_for_3() -> None:
     assert _parse_phase(3) == ObservationPhase.CONTROL_DENSITY_CLOCK
+
+
+def test_mi_shuffle_null_in_metrics_schema() -> None:
+    """mi_shuffle_null column exists in METRICS_SCHEMA."""
+    field_names = [field.name for field in METRICS_SCHEMA]
+    assert "mi_shuffle_null" in field_names
+
+
+def test_mi_shuffle_null_in_phase_summary_metric_names() -> None:
+    """mi_shuffle_null is included in PHASE_SUMMARY_METRIC_NAMES."""
+    assert "mi_shuffle_null" in PHASE_SUMMARY_METRIC_NAMES
+
+
+def test_mi_shuffle_null_column_in_output_parquet(tmp_path: Path) -> None:
+    """mi_shuffle_null column appears in metrics_summary.parquet output."""
+    run_batch_search(
+        n_rules=1,
+        phase=ObservationPhase.PHASE1_DENSITY,
+        out_dir=tmp_path,
+        steps=5,
+    )
+    metrics = pq.read_table(tmp_path / "logs" / "metrics_summary.parquet")
+    assert "mi_shuffle_null" in metrics.column_names
+    # Should be a constant value (backfilled to all steps)
+    values = metrics.column("mi_shuffle_null").to_pylist()
+    assert all(v == values[0] for v in values)
 
 
 def test_run_search_main_rejects_density_sweep_and_experiment_together(tmp_path: Path) -> None:

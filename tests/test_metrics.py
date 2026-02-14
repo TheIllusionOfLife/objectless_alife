@@ -1,3 +1,5 @@
+import random
+
 import pytest
 
 from src.metrics import (
@@ -12,6 +14,7 @@ from src.metrics import (
     phase_transition_max_delta,
     quasi_periodicity_peak_count,
     serialize_snapshot,
+    shuffle_null_mi,
     state_entropy,
 )
 
@@ -148,6 +151,43 @@ def test_mi_miller_madow_matches_naive_for_large_sample() -> None:
 
     # With 200 pairs and only a few bins, correction should be tiny
     assert abs(mi - naive_mi) < 0.05
+
+
+def test_shuffle_null_mi_deterministic_with_seed() -> None:
+    """Same seed produces identical shuffle null MI."""
+    snapshot = tuple((i * 10 + j, i, j, (i + j) % 4) for i in range(10) for j in range(10))
+    result1 = shuffle_null_mi(snapshot, 10, 10, n_shuffles=50, rng=random.Random(42))
+    result2 = shuffle_null_mi(snapshot, 10, 10, n_shuffles=50, rng=random.Random(42))
+    assert result1 == result2
+
+
+def test_shuffle_null_mi_near_zero_for_independent() -> None:
+    """Non-neighboring agents have zero MI regardless of shuffling."""
+    snapshot = (
+        (0, 0, 0, 0),
+        (1, 4, 4, 1),
+    )
+    result = shuffle_null_mi(snapshot, 10, 10, n_shuffles=50, rng=random.Random(7))
+    assert result == pytest.approx(0.0)
+
+
+def test_shuffle_null_mi_below_observed_for_correlated() -> None:
+    """Structured (correlated) states have observed MI > shuffle null mean."""
+    # Checkerboard pattern: neighbors always differ → high MI
+    snapshot = tuple((i * 10 + j, i, j, (i + j) % 2) for i in range(10) for j in range(10))
+    observed_mi = neighbor_mutual_information(snapshot, 10, 10)
+    null_mi = shuffle_null_mi(snapshot, 10, 10, n_shuffles=100, rng=random.Random(99))
+    assert observed_mi > null_mi
+
+
+def test_shuffle_null_mi_zero_when_no_pairs() -> None:
+    """No neighbor pairs → 0.0."""
+    snapshot = (
+        (0, 0, 0, 0),
+        (1, 5, 5, 1),
+    )
+    result = shuffle_null_mi(snapshot, 10, 10, n_shuffles=20, rng=random.Random(1))
+    assert result == 0.0
 
 
 def test_block_ncd_is_bounded() -> None:
