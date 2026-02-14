@@ -13,6 +13,7 @@ from src.run_search import METRICS_SCHEMA, PHASE_SUMMARY_METRIC_NAMES
 from src.stats import (
     _holm_bonferroni,
     bootstrap_median_ci,
+    filter_metric_independence,
     load_final_step_metrics,
     pairwise_metric_comparison,
     pairwise_survival_comparison,
@@ -36,6 +37,7 @@ def _make_metric_row(
     *,
     neighbor_mi: float = 0.1,
     state_entropy: float = 1.0,
+    mi_shuffle_null: float = 0.05,
 ) -> dict:
     """Build a single metrics row with sensible defaults."""
     return {
@@ -52,6 +54,7 @@ def _make_metric_row(
         "action_entropy_mean": 0.5,
         "action_entropy_variance": 0.01,
         "block_ncd": 0.3 if step >= 20 else None,
+        "mi_shuffle_null": mi_shuffle_null,
     }
 
 
@@ -570,3 +573,79 @@ class TestStatsMainPairwise:
         assert "survival_test" in loaded
         assert loaded["label_a"] == "a"
         assert loaded["label_b"] == "b"
+
+
+class TestFilterMetricIndependence:
+    def _setup_data(
+        self,
+        tmp_path: Path,
+        n_rules: int,
+        mi_survived: float,
+        mi_terminated: float,
+        surv_frac: float,
+    ) -> tuple[Path, Path]:
+        """Create metrics parquet and rule JSONs with controlled MI/survival."""
+        logs = tmp_path / "logs"
+        rules = tmp_path / "rules"
+        logs.mkdir(parents=True)
+        rules.mkdir(parents=True)
+
+        rows = []
+        for i in range(n_rules):
+            survived = i < int(n_rules * surv_frac)
+            mi = mi_survived if survived else mi_terminated
+            rows.append(_make_metric_row(f"rule_{i}", step=5, neighbor_mi=mi))
+            payload = {
+                "rule_id": f"rule_{i}",
+                "table": [0] * 20,
+                "survived": survived,
+                "filter_results": {},
+                "metadata": {},
+            }
+            (rules / f"rule_{i}.json").write_text(json.dumps(payload))
+
+        _write_metrics_parquet(logs / "metrics_summary.parquet", rows)
+        return logs / "metrics_summary.parquet", rules
+
+    def test_returns_expected_fields(self, tmp_path: Path) -> None:
+        metrics_path, rules_dir = self._setup_data(tmp_path, 20, 0.5, 0.1, 0.5)
+        result = filter_metric_independence(metrics_path, rules_dir)
+        assert "correlation" in result
+        assert "p_value" in result
+        assert "survived_median_mi" in result
+        assert "terminated_median_mi" in result
+
+    def test_high_correlation_with_correlated_data(self, tmp_path: Path) -> None:
+        """When survived rules have high MI and terminated have low, correlation is strong."""
+        metrics_path, rules_dir = self._setup_data(tmp_path, 100, 0.9, 0.01, 0.5)
+        result = filter_metric_independence(metrics_path, rules_dir)
+        assert abs(result["correlation"]) > 0.5
+        assert result["p_value"] < 0.05
+
+    def test_low_correlation_with_independent_data(self, tmp_path: Path) -> None:
+        """When MI is unrelated to survival, correlation is near zero."""
+        # Use varied MI values that are independent of survival status
+        logs = tmp_path / "indep" / "logs"
+        rules = tmp_path / "indep" / "rules"
+        logs.mkdir(parents=True)
+        rules.mkdir(parents=True)
+
+        rng = random.Random(42)
+        n = 100
+        rows = []
+        for i in range(n):
+            mi = rng.uniform(0.0, 1.0)
+            survived = i % 2 == 0  # alternating, uncorrelated with MI
+            rows.append(_make_metric_row(f"rule_{i}", step=5, neighbor_mi=mi))
+            payload = {
+                "rule_id": f"rule_{i}",
+                "table": [0] * 20,
+                "survived": survived,
+                "filter_results": {},
+                "metadata": {},
+            }
+            (rules / f"rule_{i}.json").write_text(json.dumps(payload))
+
+        _write_metrics_parquet(logs / "metrics_summary.parquet", rows)
+        result = filter_metric_independence(logs / "metrics_summary.parquet", rules)
+        assert abs(result["correlation"]) < 0.3

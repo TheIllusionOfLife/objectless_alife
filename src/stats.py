@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
-from scipy.stats import chi2_contingency, mannwhitneyu
+from scipy.stats import chi2_contingency, mannwhitneyu, pointbiserialr
 
 from src.run_search import PHASE_SUMMARY_METRIC_NAMES
 
@@ -89,6 +89,8 @@ def phase_comparison_tests(
     results: dict[str, dict] = {}
 
     for metric in metrics_to_test:
+        if metric not in phase1_metrics.column_names or metric not in phase2_metrics.column_names:
+            continue
         col1 = phase1_metrics.column(metric)
         col2 = phase2_metrics.column(metric)
 
@@ -247,6 +249,65 @@ def pairwise_survival_comparison(rules_dir_a: Path, rules_dir_b: Path) -> dict:
         "a_total": a_total,
         "b_survived": b_survived,
         "b_total": b_total,
+    }
+
+
+def filter_metric_independence(metrics_path: Path, rules_dir: Path) -> dict:
+    """Compute point-biserial correlation between survival and final-step MI.
+
+    Tests whether viability filters inadvertently select for high-MI rules.
+    Returns correlation, p-value, and per-group medians.
+    """
+    # Load survival status from rule JSONs
+    survival: dict[str, bool] = {}
+    for path in sorted(rules_dir.glob("*.json")):
+        data = json.loads(path.read_text())
+        survival[data["rule_id"]] = bool(data.get("survived", False))
+
+    # Load final-step MI values
+    final_metrics = load_final_step_metrics(metrics_path)
+    rule_ids = final_metrics.column("rule_id").to_pylist()
+    mi_values = final_metrics.column("neighbor_mutual_information").to_pylist()
+
+    # Pair MI with survival, drop nulls/NaN
+    surv_flags: list[int] = []
+    mi_list: list[float] = []
+    survived_mi: list[float] = []
+    terminated_mi: list[float] = []
+
+    for rid, mi in zip(rule_ids, mi_values, strict=True):
+        if mi is None or mi != mi:
+            continue
+        surv = survival.get(str(rid))
+        if surv is None:
+            continue
+        surv_flags.append(1 if surv else 0)
+        mi_list.append(float(mi))
+        if surv:
+            survived_mi.append(float(mi))
+        else:
+            terminated_mi.append(float(mi))
+
+    if len(surv_flags) < 3 or len(set(surv_flags)) < 2:
+        return {
+            "correlation": float("nan"),
+            "p_value": float("nan"),
+            "survived_median_mi": float("nan"),
+            "terminated_median_mi": float("nan"),
+            "n_survived": len(survived_mi),
+            "n_terminated": len(terminated_mi),
+        }
+
+    corr, pval = pointbiserialr(surv_flags, mi_list)
+    return {
+        "correlation": float(corr),
+        "p_value": float(pval),
+        "survived_median_mi": float(statistics.median(survived_mi)) if survived_mi else float("nan"),
+        "terminated_median_mi": float(statistics.median(terminated_mi))
+        if terminated_mi
+        else float("nan"),
+        "n_survived": len(survived_mi),
+        "n_terminated": len(terminated_mi),
     }
 
 
