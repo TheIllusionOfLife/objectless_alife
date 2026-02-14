@@ -10,6 +10,7 @@ import argparse
 import json
 import random
 import statistics
+import zlib
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -104,7 +105,7 @@ def phase_comparison_tests(
         effect_size_r = 1.0 - (2.0 * u_stat) / (n1 * n2)
 
         ci_lo, ci_hi = bootstrap_median_ci(
-            vals1, vals2, n_bootstrap=10000, rng=random.Random(hash(metric))
+            vals1, vals2, n_bootstrap=10000, rng=random.Random(zlib.adler32(metric.encode()))
         )
 
         results[metric] = {

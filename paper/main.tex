@@ -39,13 +39,13 @@ Across 5{,}000 rules per condition, agents with state-profile observation
 achieve nonzero median excess MI (MI calibrated by a permutation-based shuffle
 null that controls for pair-count bias) while
 density-only and control agents remain at zero
-(Cliff's $\delta = 0.34$, bootstrap 95\% CI $[0.26, 0.29]$; Table~\ref{tab:stats}),
+(Cliff's $\delta = 0.34$; median-difference bootstrap 95\% CI $[0.26, 0.30]$; Table~\ref{tab:stats}),
 and the evidence ladder Control $\leq$ Phase~1 $<$ Phase~2 holds across all
 rule-based comparisons.
 A Miller-Madow bias-corrected estimator is used throughout, and a shuffle null
 confirms that the random walk's elevated raw MI is entirely attributable to
 pair-count bias ($\mathrm{MI}_{\mathrm{excess}} \approx 0$).
-Moran's $I$ independently confirms spatial clustering accompanies elevated MI.
+Moran's $I$ further distinguishes local coordination from large-scale clustering.
 These results demonstrate that observation channel richness---not rule table
 capacity or selection pressure---drives the emergence of spatial coordination
 in objective-free systems.
@@ -349,9 +349,12 @@ For the random walk, $\mathrm{MI}_{\mathrm{excess}} \approx 0$
 (Table~\ref{tab:mi_summary}), confirming that its elevated raw MI is
 entirely attributable to pair-count bias---not spatial structure. In
 contrast, Phase~2 retains substantial excess MI, demonstrating genuine
-coordination that persists after bias calibration. Moran's $I$ independently
-corroborates this: Phase~2 shows positive spatial autocorrelation while the
-random walk does not.
+coordination that persists after bias calibration. Notably, the Control
+condition---not Phase~2---has the highest median Moran's $I$ (0.124),
+reflecting clustered but uncoordinated spatial patterns from its large table
+size. Phase~2's median Moran's $I$ ($-0.020$) is near zero, indicating that
+its elevated MI arises from local state coordination among neighbors rather
+than from large-scale spatial clustering.
 
 The random-walk baseline remains informative: it validates the shuffle-null
 calibration procedure, establishes the bias floor, and confirms that all
@@ -420,7 +423,7 @@ Bootstrap 95\% CIs for the median difference (10{,}000 resamples) are the
 primary effect-size statistic; $p$-values (Holm-Bonferroni corrected) are
 secondary.}
 \label{tab:stats}
-\begin{tabular}{llcccc}
+\begin{tabular}{llccc}
 \toprule
 Comparison & Direction & Cliff's $\delta$ & Median diff 95\% CI & $p$-value \\
 \midrule
@@ -452,8 +455,10 @@ condition). With shuffle-null-calibrated MI, Phase~2 is the
 only rule-based condition achieving nonzero median excess MI, while
 both Phase~1 and Control fall to zero---making the qualitative separation
 between observation conditions unambiguous.
-Moran's $I$ independently confirms that elevated MI corresponds to genuine
-spatial clustering, not a statistical artifact.
+Moran's $I$ reveals that the Control condition exhibits the strongest spatial
+clustering (median $I = 0.124$) despite zero excess MI, while Phase~2's near-zero
+median $I$ ($-0.020$) indicates that its coordination operates at the local
+neighbor level rather than through large-scale spatial clustering.
 This result is not a consequence of having more rules to choose from, but of
 each rule being able to respond to richer local information.
 
