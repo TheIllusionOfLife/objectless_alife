@@ -31,6 +31,9 @@ def bootstrap_median_ci(
 
     Returns (lower, upper) percentile interval at the given *ci_level*.
     """
+    if not vals1 or not vals2:
+        return (float("nan"), float("nan"))
+
     if rng is None:
         rng = random.Random()
 
@@ -40,10 +43,8 @@ def bootstrap_median_ci(
     for _ in range(n_bootstrap):
         sample1 = [vals1[rng.randrange(n1)] for _ in range(n1)]
         sample2 = [vals2[rng.randrange(n2)] for _ in range(n2)]
-        sample1.sort()
-        sample2.sort()
-        med1 = (sample1[n1 // 2] + sample1[(n1 - 1) // 2]) / 2.0
-        med2 = (sample2[n2 // 2] + sample2[(n2 - 1) // 2]) / 2.0
+        med1 = statistics.median(sample1)
+        med2 = statistics.median(sample2)
         diffs.append(med2 - med1)
 
     diffs.sort()
@@ -102,7 +103,9 @@ def phase_comparison_tests(
         # Rank-biserial correlation: r = 1 - (2U)/(n1*n2)
         effect_size_r = 1.0 - (2.0 * u_stat) / (n1 * n2)
 
-        ci_lo, ci_hi = bootstrap_median_ci(vals1, vals2, n_bootstrap=10000)
+        ci_lo, ci_hi = bootstrap_median_ci(
+            vals1, vals2, n_bootstrap=10000, rng=random.Random(hash(metric))
+        )
 
         results[metric] = {
             "u_statistic": float(u_stat),

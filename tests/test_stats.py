@@ -482,6 +482,16 @@ class TestBootstrapMedianCi:
         assert lo1 == lo2
         assert hi1 == hi2
 
+    def test_empty_inputs_return_nan(self) -> None:
+        lo, hi = bootstrap_median_ci([], [1.0, 2.0])
+        assert math.isnan(lo) and math.isnan(hi)
+        lo, hi = bootstrap_median_ci([1.0, 2.0], [])
+        assert math.isnan(lo) and math.isnan(hi)
+
+    def test_single_element_inputs(self) -> None:
+        lo, hi = bootstrap_median_ci([1.0], [5.0], n_bootstrap=1000, rng=random.Random(0))
+        assert lo == hi == 4.0  # only one possible resample
+
     def test_narrows_with_more_samples(self) -> None:
         """More samples from the same distribution → narrower CI."""
         gen = random.Random(0)

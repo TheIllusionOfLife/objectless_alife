@@ -234,8 +234,8 @@ def shuffle_null_mi(
 
     For each of *n_shuffles* iterations, randomly reassign states among occupied
     positions and compute ``neighbor_mutual_information`` on the shuffled
-    snapshot.  Returns the mean MI across all shuffles.  If no neighbor pairs
-    exist, returns 0.0 immediately.
+    snapshot.  Returns the mean MI across all shuffles.  Returns 0.0 when the
+    snapshot is empty or *n_shuffles* <= 0.
     """
     if rng is None:
         rng = random.Random()
@@ -243,7 +243,7 @@ def shuffle_null_mi(
     positions = [(agent_id, x, y) for agent_id, x, y, _ in snapshot]
     states = [state for _, _, _, state in snapshot]
 
-    if not positions:
+    if not positions or n_shuffles <= 0:
         return 0.0
 
     mi_sum = 0.0
