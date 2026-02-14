@@ -5,7 +5,7 @@ Objective-free artificial life (ALife) proof-of-concept for exploring emergent s
 ## What This Repository Contains
 
 - Deterministic, seed-driven grid-world simulation with shared rule tables
-- Two observation phases for comparative experiments
+- Four observation phases for comparative experiments (density-only, density+profile, control, random walk)
 - Physical inconsistency filters (halt/state-uniform) plus optional dynamic filters for ablations
 - Metrics and Parquet/JSON output pipelines
 - Animation rendering for inspecting individual rule trajectories
@@ -66,15 +66,26 @@ uv run python -m src.run_search \
   --out-dir data
 ```
 
-Render an animation from generated artifacts:
+Render visualizations (subcommands: `single`, `batch`, `figure`, `filmstrip`):
 
 ```bash
-uv run python -m src.visualize \
+uv run python -m src.visualize single \
   --simulation-log data/logs/simulation_log.parquet \
   --metrics-summary data/logs/metrics_summary.parquet \
   --rule-json data/rules/<rule_id>.json \
   --output output/preview.gif \
   --fps 8
+
+uv run python -m src.visualize batch --data-dir data/stage_b --top-n 5 --output-dir output/batch
+uv run python -m src.visualize figure --data-dir data/stage_b --output-dir output/figures
+uv run python -m src.visualize filmstrip --simulation-log data/logs/simulation_log.parquet --output output/filmstrip.png --n-frames 8
+```
+
+Run statistical significance tests:
+
+```bash
+uv run python -m src.stats --data-dir data/stage_b
+uv run python -m src.stats --pairwise --dir-a data/stage_b --dir-b data/stage_c
 ```
 
 ## Documentation Map
@@ -84,7 +95,10 @@ uv run python -m src.visualize \
 - `PRODUCT.md`: product intent and research goals
 - `TECH.md`: stack and technical constraints
 - `STRUCTURE.md`: codebase layout and conventions
+- `docs/stage_b_results.md`: Stage B experimental results
+- `docs/stage_c_results.md`: Stage C experimental results
 - `docs/legacy/`: archived context/review docs kept for traceability
+- `paper/`: ALIFE conference paper draft (LaTeX) and figures
 
 ## High-Level Architecture
 
@@ -93,6 +107,7 @@ uv run python -m src.visualize \
 - `src/filters.py`: termination and optional dynamic filter detectors
 - `src/metrics.py`: post-step analysis metrics
 - `src/run_search.py`: batch/experiment runner + artifact persistence
+- `src/stats.py`: statistical significance testing (Mann-Whitney U, chi-squared, effect sizes)
 - `src/visualize.py`: animation renderer from stored artifacts
 
 ## Data Outputs

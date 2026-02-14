@@ -14,6 +14,7 @@
 
 - `pyarrow`: Parquet IO and tabular artifact persistence
 - `matplotlib`: animation and visual output rendering
+- `scipy`: statistical significance tests (Mann-Whitney U, chi-squared)
 
 ## Development Tooling
 

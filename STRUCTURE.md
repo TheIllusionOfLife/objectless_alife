@@ -9,6 +9,9 @@
 - `TECH.md`: stack and constraints
 - `STRUCTURE.md`: this document
 - `docs/legacy/`: archived historical proposal/review docs
+- `docs/stage_b_results.md`: Stage B experimental results
+- `docs/stage_c_results.md`: Stage C experimental results
+- `paper/`: ALIFE conference paper draft (LaTeX) and figures
 - `src/`: application source modules
 - `tests/`: test modules mirroring `src/`
 - `.github/workflows/`: CI and automation workflows
@@ -20,6 +23,7 @@
 - `src/filters.py`: termination/dynamic filter detectors
 - `src/metrics.py`: simulation analysis metrics
 - `src/run_search.py`: batch and experiment orchestration, artifact persistence
+- `src/stats.py`: statistical significance testing, pairwise comparisons, effect sizes
 - `src/visualize.py`: animation rendering from stored artifacts
 
 ## Test Organization
