@@ -302,10 +302,12 @@ def filter_metric_independence(metrics_path: Path, rules_dir: Path) -> dict:
     return {
         "correlation": float(corr),
         "p_value": float(pval),
-        "survived_median_mi": float(statistics.median(survived_mi)) if survived_mi else float("nan"),
-        "terminated_median_mi": float(statistics.median(terminated_mi))
-        if terminated_mi
-        else float("nan"),
+        "survived_median_mi": (
+            float(statistics.median(survived_mi)) if survived_mi else float("nan")
+        ),
+        "terminated_median_mi": (
+            float(statistics.median(terminated_mi)) if terminated_mi else float("nan")
+        ),
         "n_survived": len(survived_mi),
         "n_terminated": len(terminated_mi),
     }

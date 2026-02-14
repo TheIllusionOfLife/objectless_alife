@@ -1167,18 +1167,10 @@ def run_multi_seed_robustness(config: MultiSeedConfig) -> Path:
     logs_dir.mkdir(parents=True, exist_ok=True)
 
     rows: list[dict[str, Any]] = []
-    search_cfg = SearchConfig(
-        steps=config.steps,
-        halt_window=config.halt_window,
-        shuffle_null_n_shuffles=config.shuffle_null_n_shuffles,
-    )
 
     for rule_seed in config.rule_seeds:
         for sim_seed_offset in range(config.n_sim_seeds):
             sim_seed = rule_seed * 10000 + sim_seed_offset
-            rule_id = _deterministic_rule_id(
-                phase=config.phase, rule_seed=rule_seed, sim_seed=sim_seed
-            )
 
             rule_table = generate_rule_table(phase=config.phase, seed=rule_seed)
             world_cfg = WorldConfig(steps=config.steps)
@@ -1201,9 +1193,7 @@ def run_multi_seed_robustness(config: MultiSeedConfig) -> Path:
 
             snapshot = world.snapshot()
             survived = termination_reason is None
-            mi = neighbor_mutual_information(
-                snapshot, world_cfg.grid_width, world_cfg.grid_height
-            )
+            mi = neighbor_mutual_information(snapshot, world_cfg.grid_width, world_cfg.grid_height)
             mi_null = shuffle_null_mi(
                 snapshot,
                 world_cfg.grid_width,
