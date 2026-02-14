@@ -39,7 +39,7 @@ Across 5{,}000 rules per condition, agents with state-profile observation
 achieve nonzero median excess MI (MI calibrated by a permutation-based shuffle
 null that controls for pair-count bias) while
 density-only and control agents remain at zero
-(Cliff's $\delta = 0.34$; median-difference bootstrap 95\% CI $[0.26, 0.30]$; Table~\ref{tab:stats}),
+(Cliff's $\delta = 0.34$; median-difference bootstrap 95\% CI $[0.26, 0.29]$; Table~\ref{tab:stats}),
 and the evidence ladder Control $\leq$ Phase~1 $<$ Phase~2 holds across all
 rule-based comparisons.
 A Miller-Madow bias-corrected estimator is used throughout, and a shuffle null
@@ -233,19 +233,19 @@ is the shuffle-null MI.  The \emph{excess MI},
 $\mathrm{MI}_{\mathrm{excess}} = \hat{I}_{\mathrm{MM}} -
 \overline{I}_{\mathrm{shuffle}}$, isolates genuine spatial coordination from
 estimation artifacts.  In particular, the random walk's high raw MI
-($\approx 0.36$~bits) is entirely attributable to pair-count bias:
+($\approx 0.91$~bits) is entirely attributable to pair-count bias:
 $\mathrm{MI}_{\mathrm{excess}} \approx 0$.
 
 \paragraph{Moran's I.}
-Spatial autocorrelation is quantified by Moran's $I$ across occupied cells
-using torus 4-neighborhood weights: both cells must be occupied for a
+Spatial autocorrelation is quantified by Moran's $I$~\citep{moran1950notes}
+across occupied cells using torus 4-neighborhood weights: both cells must be occupied for a
 weight of~1.  Values range from $-1$ (dispersed) through $0$ (random) to $+1$
 (clustered).  Moran's~$I$ provides an independent confirmation that elevated
 MI reflects genuine spatial clustering, not a statistical artifact.
 
 \paragraph{State entropy.}
-Shannon entropy of the internal state distribution across all agents:
-$H = -\sum_s p(s) \log_2 p(s)$.
+Shannon entropy~\citep{cover1991elements} of the internal state distribution
+across all agents: $H = -\sum_s p(s) \log_2 p(s)$.
 
 \paragraph{Action entropy.}
 Per-agent Shannon entropy of the cumulative action distribution, summarized as
@@ -265,11 +265,13 @@ applied across all metrics within each pairwise comparison. Each pairwise
 comparison (e.g., P1 vs.\ P2) tests a distinct hypothesis about the effect of
 observation content, so correction is applied per comparison rather than
 globally across all stages. Effect sizes are reported as Cliff's
-$\delta$~(equivalent to rank-biserial correlation for Mann-Whitney $U$):
+$\delta$~\citep{cliff1993dominance} (equivalent to rank-biserial correlation
+for Mann-Whitney $U$):
 $\delta = 1 - 2U_A/(n_1 n_2)$, where $U_A$ is the $U$ statistic for
 the first-listed group. To replace extreme $p$-values with more informative
-measures, we report bootstrap 95\% confidence intervals for the median
-difference (10{,}000 resamples, percentile method) as the primary effect-size
+measures, we report bootstrap 95\% confidence intervals~\citep{efron1979bootstrap} for
+the median difference (10{,}000 resamples, percentile method) as the primary
+effect-size
 statistic; $p$-values are retained as secondary evidence.
 Each rule table is paired with a single simulation
 seed (rule seed $i$ paired with simulation seed $i$), so per-rule conclusions
@@ -427,7 +429,7 @@ secondary.}
 \toprule
 Comparison & Direction & Cliff's $\delta$ & Median diff 95\% CI & $p$-value \\
 \midrule
-P1 vs.\ P2           & P2 $>$ P1      & 0.339 & [0.260, 0.295] & $< 10^{-199}$ \\
+P1 vs.\ P2           & P2 $>$ P1      & 0.339 & [0.261, 0.295] & $< 10^{-198}$ \\
 P1 vs.\ Control      & P1 $>$ Ctrl    & 0.270 & [0.012, 0.026] & $< 10^{-158}$ \\
 Control vs.\ P2      & P2 $>$ Ctrl    & 0.482 & [0.281, 0.311] & $\approx 0$ \\
 \bottomrule
@@ -578,7 +580,7 @@ Density & Grid & Agents & \multicolumn{2}{c}{Median MI (bits)} & \multicolumn{2}
 0.100 & $30 \times 30$ & 90 & 0.000 & 0.217 & 67.0 & 74.2 \\
 0.133 & $15 \times 15$ & 30 & 0.000 & 0.129 & 62.2 & 64.8 \\
 0.150 & $20 \times 20$ & 60 & 0.000 & 0.180 & 63.0 & 69.7 \\
-0.225 & $20 \times 20$ & 90 & 0.000 & 0.154 & 64.0 & 76.7 \\
+0.225 & $20 \times 20$ & 90 & 0.000 & 0.153 & 64.0 & 76.7 \\
 0.267 & $15 \times 15$ & 60 & 0.000 & 0.121 & 63.5 & 72.7 \\
 0.400 & $15 \times 15$ & 90 & 0.000 & 0.088 & 68.0 & 83.7 \\
 \bottomrule
