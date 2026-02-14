@@ -106,3 +106,4 @@ Mirror these checks locally before opening a PR.
 - `state_uniform` is an immediate termination condition; this is intentional.
 - `action` in simulation logs records intended action, not movement success.
 - Sequential random updates mean early agent updates affect later observations in the same step.
+- GIFs in output directory is too big to read. Don't try to read them.
