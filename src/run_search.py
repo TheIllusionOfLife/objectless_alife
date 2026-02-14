@@ -528,7 +528,7 @@ def _parse_phase_list(raw_phases: str) -> tuple[ObservationPhase, ...]:
         try:
             phase_raw = int(part)
         except ValueError as exc:
-            raise ValueError("phases must be integers 1, 2, or 3") from exc
+            raise ValueError("phases must be integers 1, 2, 3, or 4") from exc
         phase = _parse_phase(phase_raw)
         phases.append(phase)
 
