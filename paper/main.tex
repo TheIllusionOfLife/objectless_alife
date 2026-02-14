@@ -213,8 +213,10 @@ where the joint and marginal distributions are estimated from all adjacent
 occupied pairs at a given time step. To mitigate the positive bias of the
 plug-in estimator at small sample sizes, we apply the Miller-Madow
 correction~\citep{miller1955note}: $\hat{I}_{\mathrm{MM}} = \hat{I} -
-(K-1)/(2n\ln 2)$, where $K$ is the number of non-zero bins in the joint
-distribution and $n$ is the number of pairs. Values are clamped to $\geq 0$.
+(K_{\mathrm{joint}} - K_X - K_Y + 1)/(2n\ln 2)$, where $K_{\mathrm{joint}}$,
+$K_X$, and $K_Y$ are the counts of non-zero bins in the joint and each marginal
+distribution respectively, and $n$ is the number of pairs. Values are clamped
+to $\geq 0$.
 High MI indicates that neighboring agents' states are statistically
 dependent---a signature of spatial coordination.
 
@@ -526,8 +528,8 @@ bias-corrected MI estimator.
 \begin{table}[htbp]
 \centering
 \caption{Density sweep results across 12 conditions. Phase~2 achieves
-nonzero median MI at all densities $\geq 0.067$, while Phase~1 remains at
-zero across all densities tested.}
+nonzero median MI in 8 of 12 conditions, including all conditions with
+$\geq 60$ agents, while Phase~1 remains at zero across all densities tested.}
 \label{tab:density_sweep}
 \begin{tabular}{rllcccc}
 \toprule
@@ -553,11 +555,12 @@ Density & Grid & Agents & \multicolumn{2}{c}{Median MI (bits)} & \multicolumn{2}
 
 Table~\ref{tab:density_sweep} and Figures~\ref{fig:mi_density}
 and~\ref{fig:surv_density} present the results. Phase~2 achieves nonzero
-median MI at all densities $\geq 0.067$, peaking near $d = 0.100$ (MI =
-0.217 bits at $30 \times 30$, 90 agents) before declining at higher
-densities. Phase~1 remains at zero median MI across all 12 conditions,
-confirming that the Phase~2 advantage is not an artifact of the specific
-grid configuration used in the main experiments.
+median MI in 8 of 12 conditions, including all conditions with $\geq 60$
+agents, peaking near $d = 0.100$ (MI = 0.217 bits at $30 \times 30$, 90
+agents) before declining at higher densities. Phase~1 remains at zero
+median MI across all 12 conditions, confirming that the Phase~2 advantage
+is not an artifact of the specific grid configuration used in the main
+experiments.
 
 Phase~2 also consistently achieves higher survival rates than Phase~1, with
 the gap widening at higher densities (e.g., 76.7\% vs.\ 64.0\% at $d =

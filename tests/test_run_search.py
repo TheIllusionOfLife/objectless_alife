@@ -431,7 +431,7 @@ def test_run_batch_search_fixed_seed_metrics_rows_are_stable(tmp_path: Path) -> 
     assert first["cluster_count"] == 29
     assert first["quasi_periodicity_peaks"] == 0
     assert first["phase_transition_max_delta"] == pytest.approx(0.0)
-    assert first["neighbor_mutual_information"] == pytest.approx(0.03338908670956958)
+    assert first["neighbor_mutual_information"] == pytest.approx(0.32192809488736224)
     assert first["action_entropy_mean"] == pytest.approx(0.0)
     assert first["action_entropy_variance"] == pytest.approx(0.0)
     assert first["block_ncd"] is None
