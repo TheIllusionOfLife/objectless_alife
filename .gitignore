@@ -43,6 +43,7 @@ build/
 viz/data/
 viz/node_modules/
 viz/dist/
+.playwright-cli/
 
 # Editors/IDEs
 .vscode/
