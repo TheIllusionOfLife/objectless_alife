@@ -45,7 +45,7 @@ export class SideBySide {
     this.textFadeIn = 0;
   }
 
-  setup(renderMode, paletteName) {
+  setup(renderMode) {
     this._createRenderers(renderMode);
     this.metricOverlay = new MetricOverlay(this.p, CANVAS_WIDTH);
   }
@@ -164,14 +164,16 @@ export class SideBySide {
     // Subtitle under labels
     p.textSize(10);
     p.fill(255, 255, 255, 100);
-    p.text("(sees neighbors)", this.panelWidth / 2, 26);
-    p.text("(sees clock)", this.panelWidth + DIVIDER_WIDTH + this.panelWidth / 2, 26);
+    const leftSub = this._phaseSubtitle(this.pairedMeta.left_phase);
+    const rightSub = this._phaseSubtitle(this.pairedMeta.right_phase);
+    p.text(leftSub, this.panelWidth / 2, 26);
+    p.text(rightSub, this.panelWidth + DIVIDER_WIDTH + this.panelWidth / 2, 26);
 
     // Metric overlay
     const leftMI = this.leftData.metrics?.neighbor_mutual_information;
     const rightMI = this.rightData.metrics?.neighbor_mutual_information;
 
-    if (leftMI) {
+    if (leftMI || rightMI) {
       this.metricOverlay.draw({
         leftMI,
         rightMI,
@@ -217,6 +219,16 @@ export class SideBySide {
       random_walk: "Random Walk",
     };
     return labels[phase] || phase;
+  }
+
+  _phaseSubtitle(phase) {
+    const subtitles = {
+      phase_1: "(sees neighbor count)",
+      phase_2: "(sees neighbors)",
+      control: "(sees clock)",
+      random_walk: "(random walk)",
+    };
+    return subtitles[phase] || "";
   }
 
   _drawTextPanel() {

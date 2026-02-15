@@ -20,10 +20,6 @@ export class ParticleRenderer extends BaseRenderer {
     this.flashTimers = [];
   }
 
-  resize(panelWidth, panelHeight) {
-    super.resize(panelWidth, panelHeight);
-  }
-
   /**
    * Draw one interpolated frame with trails.
    * @param {Array<{x: number, y: number, color: number[], prevState: number, nextState: number}>} agents
@@ -59,8 +55,8 @@ export class ParticleRenderer extends BaseRenderer {
       const px = agent.x * this.cellWidth + this.cellWidth / 2;
       const py = agent.y * this.cellHeight + this.cellHeight / 2;
 
-      // Detect state change — trigger flash
-      if (agent.prevState !== agent.nextState) {
+      // Detect state change — trigger flash (only on first detection)
+      if (agent.prevState !== agent.nextState && this.flashTimers[i] === 0) {
         this.flashTimers[i] = 4; // flash for 4 sub-frames
       }
 

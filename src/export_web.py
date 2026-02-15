@@ -16,6 +16,9 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
+DEFAULT_GRID_WIDTH = 20
+DEFAULT_GRID_HEIGHT = 20
+
 
 def _load_rule_json(data_dir: Path, rule_id: str) -> dict:
     """Load a rule JSON file and return its metadata."""
@@ -41,32 +44,31 @@ def _build_single_payload(data_dir: Path, rule_id: str) -> dict:
 
     sim_rows = sim_table.to_pydict()
     steps_col = sim_rows["step"]
-    unique_steps = sorted(set(steps_col))
 
-    grid_width = raw_metadata.get("grid_width", 20)
-    grid_height = raw_metadata.get("grid_height", 20)
-    num_agents = len(
-        {sim_rows["agent_id"][i] for i in range(len(steps_col)) if steps_col[i] == unique_steps[0]}
-    )
+    grid_width = raw_metadata.get("grid_width", DEFAULT_GRID_WIDTH)
+    grid_height = raw_metadata.get("grid_height", DEFAULT_GRID_HEIGHT)
+
+    # Pre-group rows by step for O(N) frame construction
+    step_groups: dict[int, list[tuple[int, list]]] = {}
+    for i in range(len(steps_col)):
+        step = int(steps_col[i])
+        agent_entry = (
+            int(sim_rows["agent_id"][i]),
+            [int(sim_rows["x"][i]), int(sim_rows["y"][i]), int(sim_rows["state"][i])],
+        )
+        step_groups.setdefault(step, []).append(agent_entry)
+
+    unique_steps = sorted(step_groups)
+    first_step_agents = step_groups[unique_steps[0]]
+    num_agents = len({aid for aid, _ in first_step_agents})
 
     # Build frames
     frames = []
     for step in unique_steps:
-        agents = []
-        for i in range(len(steps_col)):
-            if steps_col[i] == step:
-                agents.append(
-                    [
-                        int(sim_rows["x"][i]),
-                        int(sim_rows["y"][i]),
-                        int(sim_rows["state"][i]),
-                    ]
-                )
-        # Sort by original agent_id order for consistency
-        frame_indices = [i for i in range(len(steps_col)) if steps_col[i] == step]
-        agent_ids = [int(sim_rows["agent_id"][i]) for i in frame_indices]
-        sorted_agents = [a for _, a in sorted(zip(agent_ids, agents, strict=True))]
-        frames.append({"step": int(step), "agents": sorted_agents})
+        entries = step_groups[step]
+        entries.sort(key=lambda e: e[0])
+        sorted_agents = [agent for _, agent in entries]
+        frames.append({"step": step, "agents": sorted_agents})
 
     # Build metrics series
     metric_dict = metric_table.to_pydict()
@@ -77,7 +79,11 @@ def _build_single_payload(data_dir: Path, rule_id: str) -> dict:
     mi_series = []
     for i in step_order:
         val = mi_values[i] if i < len(mi_values) else 0.0
-        mi_series.append(float(val) if val is not None and val == val else 0.0)
+        mi_series.append(
+            float(val)
+            if val is not None and not (isinstance(val, float) and math.isnan(val))
+            else 0.0
+        )
 
     phase_name = _phase_name_from_rule_id(rule_id)
 
@@ -243,13 +249,13 @@ def export_gallery(data_dir: Path, count: int, output_dir: Path) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     ranked = _get_surviving_rules_ranked_by_mi(data_dir)
-    if not ranked:
+    if not ranked or count <= 0:
         return
 
     n_available = len(ranked)
     actual_count = min(count, n_available)
 
-    if actual_count <= 1:
+    if actual_count == 1:
         indices = [0]
     else:
         indices = [int(i * (n_available - 1) / (actual_count - 1)) for i in range(actual_count)]

@@ -16,6 +16,7 @@ export class Controls {
     this.onRecord = null;
 
     this._onChange = null;
+    this._keyHandler = null;
     this._build();
     this._bindKeyboard();
   }
@@ -126,11 +127,19 @@ export class Controls {
   }
 
   _bindKeyboard() {
-    document.addEventListener("keydown", (e) => {
+    this._keyHandler = (e) => {
       if (e.code === "Space" && e.target === document.body) {
         e.preventDefault();
         this.togglePlay();
       }
-    });
+    };
+    document.addEventListener("keydown", this._keyHandler);
+  }
+
+  destroy() {
+    if (this._keyHandler) {
+      document.removeEventListener("keydown", this._keyHandler);
+      this._keyHandler = null;
+    }
   }
 }

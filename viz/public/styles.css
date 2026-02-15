@@ -7,7 +7,7 @@
 body {
   background: #060608;
   color: #e0e0e0;
-  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-family: Inter, "Helvetica Neue", Arial, sans-serif;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -94,8 +94,9 @@ body {
 }
 
 .ctrl-select:focus {
-  outline: none;
+  outline: 2px solid transparent;
   border-color: #00d4ff;
+  box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.3);
 }
 
 .message {

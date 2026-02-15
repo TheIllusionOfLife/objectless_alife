@@ -263,3 +263,42 @@ class TestExportGallery:
             assert "meta" in data
             assert "frames" in data
             assert len(data["frames"]) > 0
+
+
+# --------------------------------------------------------------------------
+# Degenerate inputs
+# --------------------------------------------------------------------------
+
+
+class TestDegenerate:
+    def test_batch_zero_top_n(self, phase2_dir: Path, tmp_path: Path) -> None:
+        out_dir = tmp_path / "batch_zero"
+        export_batch(data_dir=phase2_dir, top_n=0, output_dir=out_dir)
+
+        json_files = list(out_dir.glob("*.json"))
+        assert len(json_files) == 0
+
+    def test_gallery_zero_count(self, phase2_dir: Path, tmp_path: Path) -> None:
+        out_dir = tmp_path / "gallery_zero"
+        export_gallery(data_dir=phase2_dir, count=0, output_dir=out_dir)
+
+        json_files = list(out_dir.glob("*.json"))
+        assert len(json_files) == 0
+
+    def test_batch_empty_data_dir(self, tmp_path: Path) -> None:
+        empty_dir = tmp_path / "empty"
+        empty_dir.mkdir()
+        out_dir = tmp_path / "batch_empty"
+        export_batch(data_dir=empty_dir, top_n=5, output_dir=out_dir)
+
+        json_files = list(out_dir.glob("*.json"))
+        assert len(json_files) == 0
+
+    def test_gallery_empty_data_dir(self, tmp_path: Path) -> None:
+        empty_dir = tmp_path / "empty"
+        empty_dir.mkdir()
+        out_dir = tmp_path / "gallery_empty"
+        export_gallery(data_dir=empty_dir, count=5, output_dir=out_dir)
+
+        json_files = list(out_dir.glob("*.json"))
+        assert len(json_files) == 0

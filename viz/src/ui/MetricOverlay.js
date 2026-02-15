@@ -3,7 +3,7 @@
  * In side-by-side mode, overlays both series with phase-colored lines.
  */
 
-import { CANVAS_WIDTH, METRIC_PANEL_HEIGHT, GRID_PANEL_HEIGHT } from "../config.js";
+import { METRIC_PANEL_HEIGHT, GRID_PANEL_HEIGHT } from "../config.js";
 
 const MARGIN = { top: 10, right: 20, bottom: 25, left: 50 };
 const LABEL_COLOR = [180, 180, 180];
@@ -56,17 +56,19 @@ export class MetricOverlay {
     const plotW = this.width - MARGIN.left - MARGIN.right;
     const plotH = this.height - MARGIN.top - MARGIN.bottom;
 
-    if (!leftMI || leftMI.length === 0) {
+    const primaryMI = leftMI || rightMI;
+    if (!primaryMI || primaryMI.length === 0) {
       p.pop();
       return;
     }
 
     // Compute y-axis range
-    let allValues = [...leftMI];
+    let allValues = leftMI ? [...leftMI] : [];
     if (rightMI) allValues = allValues.concat(rightMI);
     const yMax = Math.max(...allValues, 0.01);
     const yMin = 0;
-    const totalSteps = leftMI.length;
+    const totalSteps = primaryMI.length;
+    const stepDivisor = totalSteps > 1 ? totalSteps - 1 : 1;
 
     // Axis labels
     p.textSize(10);
@@ -106,21 +108,21 @@ export class MetricOverlay {
       p.strokeWeight(1.5);
       p.beginShape();
       for (let i = 0; i < values.length; i++) {
-        const sx = plotX + (i / (totalSteps - 1)) * plotW;
+        const sx = plotX + (i / stepDivisor) * plotW;
         const sy = plotY + plotH - ((values[i] - yMin) / (yMax - yMin)) * plotH;
         p.vertex(sx, sy);
       }
       p.endShape();
     };
 
-    drawSeries(leftMI, leftColor);
+    if (leftMI) drawSeries(leftMI, leftColor);
     if (rightMI && rightColor) {
       drawSeries(rightMI, rightColor);
     }
 
     // Current step marker
     if (currentStep >= 0 && currentStep < totalSteps) {
-      const mx = plotX + (currentStep / (totalSteps - 1)) * plotW;
+      const mx = plotX + (currentStep / stepDivisor) * plotW;
       p.stroke(...MARKER_COLOR);
       p.strokeWeight(1);
       p.line(mx, plotY, mx, plotY + plotH);

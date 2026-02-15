@@ -30,7 +30,8 @@ import { GifRecorder } from "./recording/GifRecorder.js";
 const params = new URLSearchParams(window.location.search);
 const dataUrl = params.get("data");
 const pairedUrl = params.get("paired");
-const initialPalette = params.get("palette") || DEFAULT_PALETTE;
+const rawPalette = params.get("palette");
+const initialPalette = rawPalette && PALETTES[rawPalette] ? rawPalette : DEFAULT_PALETTE;
 const initialMode = params.get("mode") || "organic";
 
 async function main() {
@@ -53,8 +54,12 @@ async function main() {
   try {
     rawData = await loadSimulationData(url);
   } catch (err) {
-    document.getElementById("app").innerHTML =
-      `<div class="message error">Failed to load data: ${err.message}</div>`;
+    const errorDiv = document.createElement("div");
+    errorDiv.className = "message error";
+    errorDiv.textContent = `Failed to load data: ${err.message}`;
+    const app = document.getElementById("app");
+    app.innerHTML = "";
+    app.appendChild(errorDiv);
     return;
   }
 
@@ -203,7 +208,7 @@ function setupPairedMode(rawData, controls, gifRecorder) {
       p.createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
       p.frameRate(controls.getEffectiveFPS() * SUB_FRAMES);
       sideBySide = new SideBySide(p, leftData, rightData, pairedMeta);
-      sideBySide.setup(controls.renderMode, controls.paletteName);
+      sideBySide.setup(controls.renderMode);
     };
 
     p.draw = () => {
@@ -258,4 +263,4 @@ function setupPairedMode(rawData, controls, gifRecorder) {
   new p5(sketch, document.getElementById("app"));
 }
 
-main();
+main().catch((err) => console.error("Fatal:", err));

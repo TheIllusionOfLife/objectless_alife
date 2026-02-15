@@ -54,8 +54,9 @@ export function interpolateFrame(
 ) {
   const t = subFrameIndex / SUB_FRAMES;
   const result = [];
+  const count = Math.min(agentsPrev.length, agentsNext.length);
 
-  for (let i = 0; i < agentsPrev.length; i++) {
+  for (let i = 0; i < count; i++) {
     const [px, py, ps] = agentsPrev[i];
     const [nx, ny, ns] = agentsNext[i];
 
@@ -66,8 +67,8 @@ export function interpolateFrame(
     const y = wrapCoord(py + dy * t, gridHeight);
 
     // Cross-fade color if state changes
-    const prevColor = hexToRgb(paletteColors[ps]);
-    const nextColor = hexToRgb(paletteColors[ns]);
+    const prevColor = hexToRgb(paletteColors[ps % paletteColors.length]);
+    const nextColor = hexToRgb(paletteColors[ns % paletteColors.length]);
     const color = ps === ns ? prevColor : lerpColor(prevColor, nextColor, t);
 
     result.push({ x, y, color, prevState: ps, nextState: ns });
@@ -86,7 +87,7 @@ export function staticFrame(agents, paletteColors) {
   return agents.map(([x, y, s]) => ({
     x,
     y,
-    color: hexToRgb(paletteColors[s]),
+    color: hexToRgb(paletteColors[s % paletteColors.length]),
     prevState: s,
     nextState: s,
   }));

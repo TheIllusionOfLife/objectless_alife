@@ -23,6 +23,9 @@ export class OrganicRenderer extends BaseRenderer {
    */
   _buildGlowTexture() {
     const p = this.p;
+    if (this.glowTexture) {
+      this.glowTexture.remove();
+    }
     const size = Math.ceil(Math.max(this.cellWidth, this.cellHeight) * GLOW_RADIUS_FACTOR * 2);
     this.textureSize = Math.max(size, 8);
     const gfx = p.createGraphics(this.textureSize, this.textureSize);

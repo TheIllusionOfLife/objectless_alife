@@ -10,6 +10,7 @@ export class GifRecorder {
     this.gif = null;
     this.recording = false;
     this.frameCount = 0;
+    this._tempCanvas = null;
   }
 
   /**
@@ -17,6 +18,11 @@ export class GifRecorder {
    * gif.js must be loaded via script tag or import.
    */
   start() {
+    if (this.recording) {
+      console.warn("GIF recording already in progress.");
+      return;
+    }
+
     if (typeof GIF === "undefined") {
       console.error("gif.js not loaded. Include gif.js via script tag.");
       return;
@@ -52,15 +58,17 @@ export class GifRecorder {
   addFrame(canvas, currentStep) {
     if (!this.recording || !this.gif) return false;
 
-    // Create a scaled-down copy for the GIF
-    const tempCanvas = document.createElement("canvas");
-    tempCanvas.width = GIF_WIDTH;
-    tempCanvas.height = GIF_HEIGHT;
-    const ctx = tempCanvas.getContext("2d");
+    // Reuse a single off-screen canvas for GIF frames
+    if (!this._tempCanvas) {
+      this._tempCanvas = document.createElement("canvas");
+      this._tempCanvas.width = GIF_WIDTH;
+      this._tempCanvas.height = GIF_HEIGHT;
+    }
+    const ctx = this._tempCanvas.getContext("2d");
     ctx.drawImage(canvas, 0, 0, GIF_WIDTH, GIF_HEIGHT);
 
     const delay = Math.round(1000 / DEFAULT_FPS);
-    this.gif.addFrame(tempCanvas, { copy: true, delay });
+    this.gif.addFrame(this._tempCanvas, { copy: true, delay });
     this.frameCount++;
 
     // Stop after reaching the loop end step
