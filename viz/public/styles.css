@@ -1,0 +1,144 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #060608;
+  color: #e0e0e0;
+  font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 12px;
+}
+
+#controls {
+  width: 100%;
+  max-width: 1280px;
+  margin-bottom: 8px;
+}
+
+#app {
+  position: relative;
+}
+
+#app canvas {
+  display: block;
+  border-radius: 4px;
+}
+
+.controls-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #111118;
+  border-radius: 6px;
+  border: 1px solid #222;
+  flex-wrap: wrap;
+}
+
+.ctrl-btn {
+  background: #1a1a2e;
+  color: #c0c0d0;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.ctrl-btn:hover {
+  background: #252545;
+  border-color: #555;
+}
+
+.ctrl-btn:active {
+  background: #303060;
+}
+
+.ctrl-rec {
+  border-color: #662222;
+  color: #ff6666;
+}
+
+.ctrl-rec:hover {
+  background: #2a1515;
+  border-color: #884444;
+}
+
+.ctrl-label {
+  font-size: 12px;
+  color: #888;
+  white-space: nowrap;
+}
+
+.ctrl-slider {
+  width: 100px;
+  accent-color: #00d4ff;
+  cursor: pointer;
+}
+
+.ctrl-select {
+  background: #1a1a2e;
+  color: #c0c0d0;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ctrl-select:focus {
+  outline: 2px solid transparent;
+  border-color: #00d4ff;
+  box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.3);
+}
+
+.message {
+  max-width: 600px;
+  margin: 80px auto;
+  padding: 32px;
+  background: #111118;
+  border-radius: 8px;
+  border: 1px solid #222;
+  text-align: center;
+}
+
+.message h2 {
+  margin-bottom: 16px;
+  color: #e0e0e0;
+  font-weight: 500;
+}
+
+.message p {
+  margin-bottom: 12px;
+  color: #999;
+  font-size: 14px;
+}
+
+.message ul {
+  list-style: none;
+  margin-bottom: 12px;
+}
+
+.message li {
+  margin-bottom: 6px;
+}
+
+.message code {
+  background: #1a1a2e;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 13px;
+  color: #00d4ff;
+}
+
+.message.error {
+  border-color: #662222;
+  color: #ff6666;
+}

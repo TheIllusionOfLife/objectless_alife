@@ -39,6 +39,11 @@ dist/
 build/
 *.egg-info/
 
+# Visualization app artifacts
+viz/data/
+viz/node_modules/
+viz/dist/
+
 # Editors/IDEs
 .vscode/
 .idea/
