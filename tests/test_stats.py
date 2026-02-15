@@ -613,6 +613,18 @@ class TestWilsonScoreCi:
         lo, hi = wilson_score_ci(0, 0)
         assert math.isnan(lo) and math.isnan(hi)
 
+    def test_successes_greater_than_total_raises(self) -> None:
+        with pytest.raises(ValueError):
+            wilson_score_ci(10, 5)
+
+    def test_negative_successes_raises(self) -> None:
+        with pytest.raises(ValueError):
+            wilson_score_ci(-1, 10)
+
+    def test_negative_total_raises(self) -> None:
+        with pytest.raises(ValueError):
+            wilson_score_ci(0, -1)
+
 
 class TestFilterMetricIndependence:
     def _setup_data(

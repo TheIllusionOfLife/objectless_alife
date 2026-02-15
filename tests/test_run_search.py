@@ -792,6 +792,10 @@ def test_halt_window_sweep_config_validation() -> None:
         HaltWindowSweepConfig(rule_seeds=(), halt_windows=(5, 10, 20))
     with pytest.raises(ValueError):
         HaltWindowSweepConfig(rule_seeds=(0, 1), halt_windows=())
+    with pytest.raises(ValueError):
+        HaltWindowSweepConfig(rule_seeds=(0,), halt_windows=(0,))
+    with pytest.raises(ValueError):
+        HaltWindowSweepConfig(rule_seeds=(0,), halt_windows=(-1, 10))
 
 
 def test_halt_window_sweep_output_schema(tmp_path: Path) -> None:
