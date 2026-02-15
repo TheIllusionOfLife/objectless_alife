@@ -166,6 +166,10 @@ def run_halt_window_analysis(
     results: dict[int, dict[str, float]] = {}
     for window in (5, 10, 20):
         window_rows = [r for r in rows if r["halt_window"] == window]
+        if not window_rows:
+            results[window] = {"survival_rate": 0.0, "median_mi_excess": 0.0}
+            print(f"  Window {window:2d}: no data")
+            continue
         survived = sum(1 for r in window_rows if r["survived"])
         survival_rate = survived / len(window_rows) * 100
         mi_vals = [float(r["mi_excess"]) for r in window_rows if r["survived"]]
@@ -292,7 +296,7 @@ def run_capacity_matched_analysis() -> dict[str, dict[str, float]]:
         out_dir=phase5_out,
     )
     phase5_survived = sum(1 for r in phase5_results if r.survived)
-    phase5_survival = phase5_survived / len(phase5_results) * 100
+    phase5_survival = phase5_survived / len(phase5_results) * 100 if phase5_results else 0.0
 
     phase5_metrics = _collect_final_metric_rows(
         phase5_out / "logs" / "metrics_summary.parquet",
@@ -318,7 +322,7 @@ def run_capacity_matched_analysis() -> dict[str, dict[str, float]]:
         out_dir=phase6_out,
     )
     phase6_survived = sum(1 for r in phase6_results if r.survived)
-    phase6_survival = phase6_survived / len(phase6_results) * 100
+    phase6_survival = phase6_survived / len(phase6_results) * 100 if phase6_results else 0.0
 
     phase6_metrics = _collect_final_metric_rows(
         phase6_out / "logs" / "metrics_summary.parquet",
