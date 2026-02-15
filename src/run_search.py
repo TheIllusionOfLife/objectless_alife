@@ -237,6 +237,8 @@ class HaltWindowSweepConfig:
             raise ValueError("rule_seeds must not be empty")
         if not self.halt_windows:
             raise ValueError("halt_windows must not be empty")
+        if any(w < 1 for w in self.halt_windows):
+            raise ValueError("halt_windows values must be >= 1")
 
 
 def _deterministic_rule_id(phase: ObservationPhase, rule_seed: int, sim_seed: int) -> str:
@@ -1342,7 +1344,8 @@ def _parse_phase(raw_phase: int) -> ObservationPhase:
     try:
         return ObservationPhase(raw_phase)
     except ValueError as exc:
-        raise ValueError("phase must be 1, 2, 3, or 4") from exc
+        valid = ", ".join(str(p.value) for p in ObservationPhase)
+        raise ValueError(f"phase must be one of {valid}") from exc
 
 
 def main(argv: list[str] | None = None) -> None:

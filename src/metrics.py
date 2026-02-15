@@ -436,23 +436,22 @@ def neighbor_transfer_entropy(
         agents_t = by_step[t]
         agents_t1 = by_step[t1]
 
+        pos_to_state_t = {(ax, ay): astate for _, (ax, ay, astate) in agents_t.items()}
+
         for agent_id, (x, y, state_t) in agents_t.items():
             if agent_id not in agents_t1:
                 continue
             state_t1 = agents_t1[agent_id][2]
             # Check von Neumann neighbors at time t
-            neighbors = (
+            for nx, ny in (
                 ((x + 1) % grid_width, y),
                 ((x - 1) % grid_width, y),
                 (x, (y + 1) % grid_height),
                 (x, (y - 1) % grid_height),
-            )
-            for nx, ny in neighbors:
-                for other_id, (ox, oy, ostate) in agents_t.items():
-                    if other_id == agent_id:
-                        continue
-                    if ox == nx and oy == ny:
-                        triplets.append((state_t, ostate, state_t1))
+            ):
+                neighbor_state = pos_to_state_t.get((nx, ny))
+                if neighbor_state is not None and (nx, ny) != (x, y):
+                    triplets.append((state_t, neighbor_state, state_t1))
 
     if not triplets:
         return 0.0

@@ -123,4 +123,12 @@ def generate_rule_table(phase: ObservationPhase, seed: int) -> list[int]:
                     table[s * 25 + n * 5 + d] = action
         return table
 
+    if phase == ObservationPhase.PHASE2_RANDOM_ENCODING:
+        # Same action values as Phase 2, but permute entries to destroy
+        # the structured observation-to-action mapping.
+        base_table = [rng.randint(0, 8) for _ in range(100)]
+        perm = list(range(100))
+        rng.shuffle(perm)
+        return [base_table[perm[i]] for i in range(100)]
+
     return [rng.randint(0, 8) for _ in range(size)]

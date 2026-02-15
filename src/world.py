@@ -169,7 +169,7 @@ class World:
                 dom = dominant_neighbor_state(neighbor_states)
                 index = compute_phase2_index(agent.state, neighbor_count, dom)
             else:
-                raise NotImplementedError(f"Unhandled observation phase: {phase}")
+                raise ValueError(f"Unhandled observation phase: {phase}")
 
             action = rule_table[index]
             actions[agent_id] = action
