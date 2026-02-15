@@ -40,7 +40,7 @@ Across 5{,}000 rules per condition, agents with state-profile observation
 achieve nonzero median excess MI (MI calibrated by a permutation-based shuffle
 null that controls for pair-count bias) while
 density-only and control agents remain at zero
-(Cliff's $\delta = 0.36$; median-difference bootstrap 95\% CI $[0.078, 0.111]$; Table~\ref{tab:stats}),
+(Cliff's $\delta = 0.355$; median-difference bootstrap 95\% CI $[0.078, 0.111]$; Table~\ref{tab:stats}),
 and the evidence ladder Control $\leq$ Phase~1 $<$ Phase~2 holds across all
 rule-based comparisons.
 A Miller-Madow bias-corrected estimator is used throughout, and a shuffle null
@@ -310,7 +310,7 @@ For each of the four conditions, we generate 5{,}000 random rule tables using
 deterministic seeds (rule seeds 0--4{,}999, simulation seeds 0--4{,}999). Each
 rule table is evaluated on a single 200-step simulation. Surviving rules (those
 not terminated by halt or state-uniformity filters) have their final-step
-metrics recorded.
+metrics recorded; all pairwise statistical comparisons use only surviving rules.
 
 Statistical comparisons use two-sided Mann-Whitney $U$
 tests~\citep{mann1947test} with Holm-Bonferroni correction~\citep{holm1979simple}
@@ -485,9 +485,9 @@ the bootstrap CI estimates the location shift of the median difference.}
 \toprule
 Comparison & Direction & $n_1$ & $n_2$ & Cliff's $\delta$ & Median diff 95\% CI & $p$-value \\
 \midrule
-P1 vs.\ P2      & P2 $>$ P1   & 5000 & 5000 & 0.355 & [0.078, 0.111] & $< 10^{-252}$ \\
-Ctrl vs.\ P1    & P1 $>$ Ctrl & 5000 & 5000 & 0.124 & [$< 0.001$, $< 0.001$] & $< 10^{-50}$ \\
-Ctrl vs.\ P2    & P2 $>$ Ctrl & 5000 & 5000 & 0.423 & [0.078, 0.111] & $\approx 0$ \\
+P1 vs.\ P2      & P2 $>$ P1   & 3570 & 3735 & 0.355 & [0.078, 0.111] & $< 10^{-252}$ \\
+Ctrl vs.\ P1    & P1 $>$ Ctrl & 2225 & 3570 & 0.124 & [$< 0.001$, $< 0.001$] & $< 10^{-50}$ \\
+Ctrl vs.\ P2    & P2 $>$ Ctrl & 2225 & 3735 & 0.423 & [0.078, 0.111] & $\approx 0$ \\
 \bottomrule
 \end{tabular}
 \end{table*}
