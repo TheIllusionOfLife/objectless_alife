@@ -2,6 +2,7 @@ import pytest
 
 from src.rules import (
     ObservationPhase,
+    compute_capacity_matched_index,
     compute_control_index,
     compute_phase1_index,
     compute_phase2_index,
@@ -74,4 +75,56 @@ def test_rule_table_size_random_walk() -> None:
 def test_generate_rule_table_random_walk() -> None:
     table = generate_rule_table(ObservationPhase.RANDOM_WALK, seed=0)
     assert len(table) == 1
+    assert all(0 <= action <= 8 for action in table)
+
+
+# --- PHASE1_CAPACITY_MATCHED tests ---
+
+
+def test_rule_table_size_capacity_matched() -> None:
+    assert rule_table_size(ObservationPhase.PHASE1_CAPACITY_MATCHED) == 100
+
+
+def test_capacity_matched_index_aliases_phase1() -> None:
+    """Capacity-matched indices should map to the same observation as Phase 1."""
+    # For any (self_state, neighbor_count, dominant_state), the capacity-matched
+    # index should alias to Phase-1-style observation (ignoring dominant_state)
+    for s in range(4):
+        for n in range(5):
+            p1_idx = compute_phase1_index(s, n)
+            for d in range(5):
+                cm_idx = compute_capacity_matched_index(s, n, d)
+                assert 0 <= cm_idx < 100
+                # Different d values for same (s, n) should map to same
+                # effective observation
+                cm_idx2 = compute_capacity_matched_index(s, n, 0)
+                # The aliased indices should produce the same action from
+                # a capacity-matched table generated with the same seed
+                table = generate_rule_table(ObservationPhase.PHASE1_CAPACITY_MATCHED, seed=42)
+                assert table[cm_idx] == table[cm_idx2]
+
+
+def test_generate_rule_table_capacity_matched() -> None:
+    table = generate_rule_table(ObservationPhase.PHASE1_CAPACITY_MATCHED, seed=42)
+    assert len(table) == 100
+    assert all(0 <= action <= 8 for action in table)
+
+
+# --- PHASE2_RANDOM_ENCODING tests ---
+
+
+def test_rule_table_size_random_encoding() -> None:
+    assert rule_table_size(ObservationPhase.PHASE2_RANDOM_ENCODING) == 100
+
+
+def test_random_encoding_deterministic_with_seed() -> None:
+    """Same seed → same table."""
+    t1 = generate_rule_table(ObservationPhase.PHASE2_RANDOM_ENCODING, seed=42)
+    t2 = generate_rule_table(ObservationPhase.PHASE2_RANDOM_ENCODING, seed=42)
+    assert t1 == t2
+
+
+def test_random_encoding_correct_size() -> None:
+    table = generate_rule_table(ObservationPhase.PHASE2_RANDOM_ENCODING, seed=99)
+    assert len(table) == 100
     assert all(0 <= action <= 8 for action in table)

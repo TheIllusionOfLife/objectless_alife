@@ -6,16 +6,20 @@ from src.metrics import (
     action_entropy,
     action_entropy_variance,
     block_ncd,
+    block_shuffle_null_mi,
     cluster_count_by_state,
     compression_ratio,
+    fixed_marginal_null_mi,
     morans_i_occupied,
     neighbor_mutual_information,
+    neighbor_transfer_entropy,
     normalized_hamming_distance,
     phase_transition_max_delta,
     quasi_periodicity_peak_count,
     same_state_adjacency_fraction,
     serialize_snapshot,
     shuffle_null_mi,
+    spatial_scramble_mi,
     state_entropy,
 )
 
@@ -253,3 +257,136 @@ def test_block_ncd_is_bounded() -> None:
     b = b"ABCE" * 32
     ncd = block_ncd(a, b)
     assert 0.0 <= ncd <= 1.0
+
+
+# --- spatial_scramble_mi tests ---
+
+
+def test_spatial_scramble_mi_all_same_state() -> None:
+    """All agents share a state → scrambling produces identical snapshots → MI unchanged."""
+    snapshot = (
+        (0, 0, 0, 1),
+        (1, 1, 0, 1),
+        (2, 0, 1, 1),
+        (3, 1, 1, 1),
+    )
+    result = spatial_scramble_mi(snapshot, 5, 5, n_scrambles=50, rng=random.Random(0))
+    observed = neighbor_mutual_information(snapshot, 5, 5)
+    # With all-same states, scrambling doesn't change anything
+    assert result == pytest.approx(observed, abs=1e-10)
+
+
+def test_spatial_scramble_mi_empty_snapshot() -> None:
+    """Empty snapshot → 0.0."""
+    result = spatial_scramble_mi((), 5, 5, n_scrambles=50, rng=random.Random(0))
+    assert result == 0.0
+
+
+def test_spatial_scramble_mi_drops_for_structured() -> None:
+    """Structured patterns should have scrambled MI lower than observed MI."""
+    # Checkerboard: neighbors always differ
+    snapshot = tuple((i * 10 + j, i, j, (i + j) % 2) for i in range(10) for j in range(10))
+    observed = neighbor_mutual_information(snapshot, 10, 10)
+    scrambled = spatial_scramble_mi(snapshot, 10, 10, n_scrambles=100, rng=random.Random(42))
+    assert scrambled < observed
+
+
+def test_spatial_scramble_mi_deterministic() -> None:
+    """Same seed → same result."""
+    snapshot = tuple((i * 10 + j, i, j, (i + j) % 4) for i in range(10) for j in range(10))
+    r1 = spatial_scramble_mi(snapshot, 10, 10, n_scrambles=50, rng=random.Random(7))
+    r2 = spatial_scramble_mi(snapshot, 10, 10, n_scrambles=50, rng=random.Random(7))
+    assert r1 == r2
+
+
+# --- block_shuffle_null_mi tests ---
+
+
+def test_block_shuffle_null_mi_nonnegative() -> None:
+    """Result is non-negative."""
+    snapshot = tuple((i * 10 + j, i, j, (i + j) % 4) for i in range(10) for j in range(10))
+    result = block_shuffle_null_mi(snapshot, 10, 10, block_size=4, n_shuffles=20, rng=random.Random(0))
+    assert result >= 0.0
+
+
+def test_block_shuffle_null_mi_empty() -> None:
+    """Empty snapshot → 0.0."""
+    result = block_shuffle_null_mi((), 5, 5, block_size=2, n_shuffles=20, rng=random.Random(0))
+    assert result == 0.0
+
+
+def test_block_shuffle_null_mi_deterministic() -> None:
+    """Same seed → same result."""
+    snapshot = tuple((i * 10 + j, i, j, (i + j) % 4) for i in range(10) for j in range(10))
+    r1 = block_shuffle_null_mi(snapshot, 10, 10, block_size=4, n_shuffles=20, rng=random.Random(3))
+    r2 = block_shuffle_null_mi(snapshot, 10, 10, block_size=4, n_shuffles=20, rng=random.Random(3))
+    assert r1 == r2
+
+
+# --- fixed_marginal_null_mi tests ---
+
+
+def test_fixed_marginal_null_mi_nonnegative() -> None:
+    """Result is non-negative."""
+    snapshot = tuple((i * 10 + j, i, j, (i + j) % 4) for i in range(10) for j in range(10))
+    result = fixed_marginal_null_mi(snapshot, 10, 10, n_samples=20, rng=random.Random(0))
+    assert result >= 0.0
+
+
+def test_fixed_marginal_null_mi_empty() -> None:
+    """Empty snapshot → 0.0."""
+    result = fixed_marginal_null_mi((), 5, 5, n_samples=20, rng=random.Random(0))
+    assert result == 0.0
+
+
+def test_fixed_marginal_null_mi_nan_on_single_agent() -> None:
+    """Single agent → no pairs → 0.0."""
+    snapshot = ((0, 2, 2, 1),)
+    result = fixed_marginal_null_mi(snapshot, 5, 5, n_samples=20, rng=random.Random(0))
+    assert result == 0.0
+
+
+def test_fixed_marginal_null_mi_deterministic() -> None:
+    """Same seed → same result."""
+    snapshot = tuple((i * 10 + j, i, j, (i + j) % 4) for i in range(10) for j in range(10))
+    r1 = fixed_marginal_null_mi(snapshot, 10, 10, n_samples=20, rng=random.Random(5))
+    r2 = fixed_marginal_null_mi(snapshot, 10, 10, n_samples=20, rng=random.Random(5))
+    assert r1 == r2
+
+
+# --- neighbor_transfer_entropy tests ---
+
+
+def test_transfer_entropy_independent_near_zero() -> None:
+    """Independent agents (no neighbor influence) → TE near zero."""
+    # Simulate agents with random states, no correlation between neighbors
+    rng = random.Random(42)
+    sim_log: list[tuple[int, int, int, int, int]] = []  # (step, agent_id, x, y, state)
+    n_agents = 10
+    for step in range(20):
+        for aid in range(n_agents):
+            sim_log.append((step, aid, aid, 0, rng.randint(0, 3)))
+    te = neighbor_transfer_entropy(sim_log, 10, 1)
+    assert te >= 0.0
+    assert te < 0.5  # Should be near zero for independent
+
+
+def test_transfer_entropy_copied_states_high() -> None:
+    """When agents copy neighbor states, TE should be elevated."""
+    # Construct a scenario where agent state at t+1 = neighbor state at t
+    sim_log: list[tuple[int, int, int, int, int]] = []
+    # Two agents side by side: agent 0 at (0,0), agent 1 at (1,0)
+    # Agent 1's state at t+1 always equals agent 0's state at t
+    states_a0 = [0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3]
+    states_a1 = [0] + states_a0[:-1]  # shifted copy of agent 0
+    for step in range(20):
+        sim_log.append((step, 0, 0, 0, states_a0[step]))
+        sim_log.append((step, 1, 1, 0, states_a1[step]))
+    te = neighbor_transfer_entropy(sim_log, 5, 5)
+    assert te > 0.0
+
+
+def test_transfer_entropy_empty_log() -> None:
+    """Empty simulation log → 0.0."""
+    te = neighbor_transfer_entropy([], 5, 5)
+    assert te == 0.0

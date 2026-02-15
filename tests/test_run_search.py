@@ -12,6 +12,7 @@ from src.run_search import (
     PHASE_SUMMARY_METRIC_NAMES,
     DensitySweepConfig,
     ExperimentConfig,
+    HaltWindowSweepConfig,
     MultiSeedConfig,
     SearchConfig,
     _entropy_from_action_counts,
@@ -21,6 +22,7 @@ from src.run_search import (
     run_batch_search,
     run_density_sweep,
     run_experiment,
+    run_halt_window_sweep,
     run_multi_seed_robustness,
     select_top_rules_by_excess_mi,
 )
@@ -778,4 +780,49 @@ def test_run_search_main_rejects_density_sweep_and_experiment_together(tmp_path:
                 "--out-dir",
                 str(tmp_path),
             ]
+        )
+
+
+# --- HaltWindowSweep tests ---
+
+
+def test_halt_window_sweep_config_validation() -> None:
+    """HaltWindowSweepConfig rejects invalid inputs."""
+    with pytest.raises(ValueError):
+        HaltWindowSweepConfig(rule_seeds=(), halt_windows=(5, 10, 20))
+    with pytest.raises(ValueError):
+        HaltWindowSweepConfig(rule_seeds=(0, 1), halt_windows=())
+
+
+def test_halt_window_sweep_output_schema(tmp_path: Path) -> None:
+    """run_halt_window_sweep produces parquet with expected columns."""
+    config = HaltWindowSweepConfig(
+        rule_seeds=(0, 1),
+        halt_windows=(5, 10),
+        out_dir=tmp_path / "halt_sweep",
+        steps=8,
+    )
+    output_path = run_halt_window_sweep(config)
+    assert output_path.exists()
+    table = pq.read_table(output_path)
+    expected_cols = {
+        "rule_seed",
+        "halt_window",
+        "survived",
+        "mi_excess",
+    }
+    assert expected_cols.issubset(table.column_names)
+    assert table.num_rows == 2 * 2  # 2 rules x 2 halt_windows
+
+
+def test_halt_window_sweep_workload_cap(tmp_path: Path) -> None:
+    """Excessive workload is rejected."""
+    with pytest.raises(ValueError, match="workload"):
+        run_halt_window_sweep(
+            HaltWindowSweepConfig(
+                rule_seeds=tuple(range(100_000)),
+                halt_windows=(5, 10, 20),
+                out_dir=tmp_path,
+                steps=200_000,
+            )
         )

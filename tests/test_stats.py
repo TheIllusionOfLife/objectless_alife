@@ -21,6 +21,7 @@ from src.stats import (
     run_statistical_analysis,
     save_results,
     survival_rate_test,
+    wilson_score_ci,
 )
 from src.stats import main as stats_main
 
@@ -573,6 +574,44 @@ class TestStatsMainPairwise:
         assert "survival_test" in loaded
         assert loaded["label_a"] == "a"
         assert loaded["label_b"] == "b"
+
+
+class TestWilsonScoreCi:
+    def test_known_values(self) -> None:
+        """Wilson CI for 50/100 at 95% should be roughly (0.40, 0.60)."""
+        lo, hi = wilson_score_ci(50, 100)
+        assert 0.39 < lo < 0.42
+        assert 0.58 < hi < 0.61
+
+    def test_zero_successes(self) -> None:
+        """0/100: lower bound is 0, upper bound positive."""
+        lo, hi = wilson_score_ci(0, 100)
+        assert lo == pytest.approx(0.0, abs=1e-9)
+        assert hi > 0.0
+
+    def test_all_successes(self) -> None:
+        """100/100: lower bound < 1, upper bound is 1."""
+        lo, hi = wilson_score_ci(100, 100)
+        assert lo < 1.0
+        assert hi == pytest.approx(1.0, abs=1e-9)
+
+    def test_bounds_ordered(self) -> None:
+        lo, hi = wilson_score_ci(30, 200)
+        assert lo < hi
+
+    def test_bounds_in_unit_interval(self) -> None:
+        lo, hi = wilson_score_ci(7, 10)
+        assert 0.0 <= lo <= 1.0
+        assert 0.0 <= hi <= 1.0
+
+    def test_narrows_with_more_observations(self) -> None:
+        lo1, hi1 = wilson_score_ci(5, 10)
+        lo2, hi2 = wilson_score_ci(50, 100)
+        assert (hi2 - lo2) < (hi1 - lo1)
+
+    def test_zero_total_returns_nan(self) -> None:
+        lo, hi = wilson_score_ci(0, 0)
+        assert math.isnan(lo) and math.isnan(hi)
 
 
 class TestFilterMetricIndependence:
