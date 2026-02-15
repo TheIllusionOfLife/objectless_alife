@@ -29,6 +29,7 @@ from src.metrics import (
     neighbor_mutual_information,
     normalized_hamming_distance,
     quasi_periodicity_peak_count,
+    same_state_adjacency_fraction,
     serialize_snapshot,
     shuffle_null_mi,
     state_entropy,
@@ -211,7 +212,7 @@ class DensitySweepConfig:
 class MultiSeedConfig:
     """Settings for multi-seed robustness evaluation of selected rules."""
 
-    rule_seeds: list[int]
+    rule_seeds: tuple[int, ...]
     n_sim_seeds: int = 20
     out_dir: Path = Path("data/multi_seed")
     steps: int = 200
@@ -662,17 +663,20 @@ def _build_phase_summary(
         "mean_terminated_at": _mean([float(v) for v in terminated_at_values]),
     }
 
-    # Derive mi_excess per rule before summarizing
+    # Derive mi_excess per rule before summarizing (avoid mutating caller's list)
+    enriched_rows = []
     for row in final_metric_rows:
-        mi = row.get("neighbor_mutual_information")
-        null = row.get("mi_shuffle_null")
+        new_row = row.copy()
+        mi = new_row.get("neighbor_mutual_information")
+        null = new_row.get("mi_shuffle_null")
         if mi is not None and null is not None and mi == mi and null == null:
-            row["mi_excess"] = max(float(mi) - float(null), 0.0)
+            new_row["mi_excess"] = max(float(mi) - float(null), 0.0)
         else:
-            row["mi_excess"] = None
+            new_row["mi_excess"] = None
+        enriched_rows.append(new_row)
 
     for metric_name in PHASE_SUMMARY_METRIC_NAMES:
-        values = sorted(_to_float_list(final_metric_rows, metric_name))
+        values = sorted(_to_float_list(enriched_rows, metric_name))
         summary[f"{metric_name}_mean"] = _mean(values)
         summary[f"{metric_name}_p25"] = _percentile_pre_sorted(values, 0.25)
         summary[f"{metric_name}_p50"] = _percentile_pre_sorted(values, 0.50)
@@ -1123,6 +1127,8 @@ def select_top_rules_by_excess_mi(
                 null = batch_dict["mi_shuffle_null"][idx]
                 if mi is not None and null is not None and mi == mi and null == null:
                     rule_metrics[rid] = {"mi": float(mi), "null": float(null)}
+                else:
+                    rule_metrics.pop(rid, None)  # Clear stale entry from earlier step
 
     # Filter to survived rules only
     survived_seeds: list[tuple[int, float]] = []
@@ -1160,7 +1166,14 @@ def run_multi_seed_robustness(config: MultiSeedConfig) -> Path:
 
     Returns path to the output parquet file.
     """
-    from src.metrics import same_state_adjacency_fraction
+    total_work = len(config.rule_seeds) * config.n_sim_seeds * config.steps
+    if total_work > MAX_EXPERIMENT_WORK_UNITS:
+        raise ValueError(
+            "multi-seed robustness workload exceeds safety threshold; "
+            "reduce rule_seeds/n_sim_seeds/steps"
+        )
+    if config.n_sim_seeds >= 10000:
+        raise ValueError("n_sim_seeds must be < 10000 to avoid seed collisions")
 
     out_dir = Path(config.out_dir)
     logs_dir = out_dir / "logs"

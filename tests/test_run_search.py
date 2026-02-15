@@ -741,7 +741,7 @@ def test_multi_seed_robustness_output_schema(tmp_path: Path) -> None:
         )
     )
     config = MultiSeedConfig(
-        rule_seeds=[0, 1],
+        rule_seeds=(0, 1),
         n_sim_seeds=3,
         out_dir=tmp_path / "multi_seed",
         steps=8,

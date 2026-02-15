@@ -278,7 +278,7 @@ def filter_metric_independence(metrics_path: Path, rules_dir: Path) -> dict:
     for rid, mi in zip(rule_ids, mi_values, strict=True):
         if mi is None or mi != mi:
             continue
-        surv = survival.get(str(rid))
+        surv = survival.get(rid)
         if surv is None:
             continue
         surv_flags.append(1 if surv else 0)
