@@ -6,6 +6,7 @@ from random import Random
 from src.rules import (
     CLOCK_PERIOD,
     ObservationPhase,
+    compute_capacity_matched_index,
     compute_control_index,
     compute_phase1_index,
     compute_phase2_index,
@@ -159,6 +160,12 @@ class World:
                 step_mod = step_number % CLOCK_PERIOD
                 index = compute_control_index(agent.state, neighbor_count, step_mod)
             elif phase == ObservationPhase.PHASE2_PROFILE:
+                dom = dominant_neighbor_state(neighbor_states)
+                index = compute_phase2_index(agent.state, neighbor_count, dom)
+            elif phase == ObservationPhase.PHASE1_CAPACITY_MATCHED:
+                dom = dominant_neighbor_state(neighbor_states)
+                index = compute_capacity_matched_index(agent.state, neighbor_count, dom)
+            elif phase == ObservationPhase.PHASE2_RANDOM_ENCODING:
                 dom = dominant_neighbor_state(neighbor_states)
                 index = compute_phase2_index(agent.state, neighbor_count, dom)
             else:

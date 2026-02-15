@@ -221,6 +221,24 @@ class MultiSeedConfig:
     shuffle_null_n_shuffles: int = 200
 
 
+@dataclass(frozen=True)
+class HaltWindowSweepConfig:
+    """Settings for halt-window sensitivity analysis."""
+
+    rule_seeds: tuple[int, ...]
+    halt_windows: tuple[int, ...] = (5, 10, 20)
+    out_dir: Path = Path("data/halt_window_sweep")
+    steps: int = 200
+    phase: ObservationPhase = ObservationPhase.PHASE2_PROFILE
+    shuffle_null_n_shuffles: int = 200
+
+    def __post_init__(self) -> None:
+        if not self.rule_seeds:
+            raise ValueError("rule_seeds must not be empty")
+        if not self.halt_windows:
+            raise ValueError("halt_windows must not be empty")
+
+
 def _deterministic_rule_id(phase: ObservationPhase, rule_seed: int, sim_seed: int) -> str:
     """Build reproducible rule ID stable across runs for identical seeds."""
     return f"phase{phase.value}_rs{rule_seed}_ss{sim_seed}"
@@ -1234,6 +1252,88 @@ def run_multi_seed_robustness(config: MultiSeedConfig) -> Path:
 
     output_path = logs_dir / "multi_seed_results.parquet"
     pq.write_table(pa.Table.from_pylist(rows, schema=MULTI_SEED_SCHEMA), output_path)
+    return output_path
+
+
+HALT_WINDOW_SWEEP_SCHEMA = pa.schema(
+    [
+        ("rule_seed", pa.int64()),
+        ("halt_window", pa.int64()),
+        ("survived", pa.bool_()),
+        ("termination_reason", pa.string()),
+        ("neighbor_mutual_information", pa.float64()),
+        ("mi_shuffle_null", pa.float64()),
+        ("mi_excess", pa.float64()),
+    ]
+)
+
+
+def run_halt_window_sweep(config: HaltWindowSweepConfig) -> Path:
+    """Evaluate rules across multiple halt-window values for sensitivity analysis.
+
+    Returns path to the output parquet file.
+    """
+    total_work = len(config.rule_seeds) * len(config.halt_windows) * config.steps
+    if total_work > MAX_EXPERIMENT_WORK_UNITS:
+        raise ValueError(
+            "halt-window sweep workload exceeds safety threshold; "
+            "reduce rule_seeds/halt_windows/steps"
+        )
+
+    out_dir = Path(config.out_dir)
+    logs_dir = out_dir / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+
+    rows: list[dict[str, Any]] = []
+
+    for rule_seed in config.rule_seeds:
+        rule_table = generate_rule_table(phase=config.phase, seed=rule_seed)
+        for halt_window in config.halt_windows:
+            sim_seed = rule_seed * 10000
+            world_cfg = WorldConfig(steps=config.steps)
+            world = World(config=world_cfg, sim_seed=sim_seed)
+            halt_detector = HaltDetector(window=halt_window)
+            uniform_detector = StateUniformDetector()
+
+            termination_reason: str | None = None
+            for step in range(world_cfg.steps):
+                world.step(rule_table, config.phase, step_number=step)
+                snapshot = world.snapshot()
+                states = world.state_vector()
+
+                if uniform_detector.observe(states):
+                    termination_reason = TerminationReason.STATE_UNIFORM.value
+                    break
+                if halt_detector.observe(snapshot):
+                    termination_reason = TerminationReason.HALT.value
+                    break
+
+            snapshot = world.snapshot()
+            survived = termination_reason is None
+            mi = neighbor_mutual_information(snapshot, world_cfg.grid_width, world_cfg.grid_height)
+            mi_null = shuffle_null_mi(
+                snapshot,
+                world_cfg.grid_width,
+                world_cfg.grid_height,
+                n_shuffles=config.shuffle_null_n_shuffles,
+                rng=random.Random(sim_seed),
+            )
+            mi_exc = max(mi - mi_null, 0.0)
+
+            rows.append(
+                {
+                    "rule_seed": rule_seed,
+                    "halt_window": halt_window,
+                    "survived": survived,
+                    "termination_reason": termination_reason,
+                    "neighbor_mutual_information": mi,
+                    "mi_shuffle_null": mi_null,
+                    "mi_excess": mi_exc,
+                }
+            )
+
+    output_path = logs_dir / "halt_window_sweep.parquet"
+    pq.write_table(pa.Table.from_pylist(rows, schema=HALT_WINDOW_SWEEP_SCHEMA), output_path)
     return output_path
 
 

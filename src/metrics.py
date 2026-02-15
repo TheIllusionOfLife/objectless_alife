@@ -293,6 +293,200 @@ def shuffle_null_mi(
     return mi_sum / n_shuffles
 
 
+def spatial_scramble_mi(
+    snapshot: tuple[tuple[int, int, int, int], ...],
+    grid_width: int,
+    grid_height: int,
+    n_scrambles: int = 200,
+    rng: random.Random | None = None,
+) -> float:
+    """Mean MI after randomly reassigning agent positions (keep states, shuffle positions).
+
+    Tests whether MI depends on genuine local coordination vs incidental
+    position arrangement.  Returns 0.0 for empty snapshots.
+    """
+    if not snapshot or n_scrambles <= 0:
+        return 0.0
+    if rng is None:
+        rng = random.Random()
+
+    agent_ids = [agent_id for agent_id, _, _, _ in snapshot]
+    positions = [(x, y) for _, x, y, _ in snapshot]
+    states = [state for _, _, _, state in snapshot]
+
+    mi_sum = 0.0
+    for _ in range(n_scrambles):
+        shuffled_positions = positions.copy()
+        rng.shuffle(shuffled_positions)
+        scrambled = tuple(
+            (aid, x, y, s)
+            for aid, (x, y), s in zip(agent_ids, shuffled_positions, states, strict=True)
+        )
+        mi_sum += neighbor_mutual_information(scrambled, grid_width, grid_height)
+
+    return mi_sum / n_scrambles
+
+
+def block_shuffle_null_mi(
+    snapshot: tuple[tuple[int, int, int, int], ...],
+    grid_width: int,
+    grid_height: int,
+    block_size: int = 4,
+    n_shuffles: int = 200,
+    rng: random.Random | None = None,
+) -> float:
+    """Mean MI after shuffling states in spatial blocks.
+
+    Divides the grid into blocks of *block_size* x *block_size* and shuffles
+    states among agents within each block, preserving local autocorrelation
+    structure at the block level.  Returns 0.0 for empty snapshots.
+    """
+    if not snapshot or n_shuffles <= 0:
+        return 0.0
+    if rng is None:
+        rng = random.Random()
+
+    occupied = {(x, y): (agent_id, state) for agent_id, x, y, state in snapshot}
+    # Assign occupied positions to blocks
+    blocks: dict[tuple[int, int], list[tuple[int, int]]] = {}
+    for x, y in occupied:
+        bx = x // block_size
+        by = y // block_size
+        blocks.setdefault((bx, by), []).append((x, y))
+
+    mi_sum = 0.0
+    for _ in range(n_shuffles):
+        new_snapshot_dict: dict[tuple[int, int], tuple[int, int]] = {}
+        for positions in blocks.values():
+            block_states = [occupied[pos][1] for pos in positions]
+            rng.shuffle(block_states)
+            for pos, s in zip(positions, block_states, strict=True):
+                new_snapshot_dict[pos] = (occupied[pos][0], s)
+        shuffled = tuple((aid, x, y, s) for (x, y), (aid, s) in new_snapshot_dict.items())
+        mi_sum += neighbor_mutual_information(shuffled, grid_width, grid_height)
+
+    return mi_sum / n_shuffles
+
+
+def fixed_marginal_null_mi(
+    snapshot: tuple[tuple[int, int, int, int], ...],
+    grid_width: int,
+    grid_height: int,
+    n_samples: int = 200,
+    rng: random.Random | None = None,
+) -> float:
+    """Mean MI for synthetic snapshots with identical marginal distributions.
+
+    Generates snapshots where each occupied position is independently assigned
+    a state drawn from the observed marginal distribution.  This preserves
+    marginal frequencies but destroys all spatial dependence.
+    Returns 0.0 for empty snapshots.
+    """
+    if not snapshot or n_samples <= 0:
+        return 0.0
+    if rng is None:
+        rng = random.Random()
+
+    positions = [(agent_id, x, y) for agent_id, x, y, _ in snapshot]
+    states = [state for _, _, _, state in snapshot]
+    state_counts = Counter(states)
+    state_pool = list(state_counts.keys())
+    weights = [state_counts[s] for s in state_pool]
+
+    mi_sum = 0.0
+    for _ in range(n_samples):
+        sampled_states = rng.choices(state_pool, weights=weights, k=len(positions))
+        synthetic = tuple(
+            (aid, x, y, s) for (aid, x, y), s in zip(positions, sampled_states, strict=True)
+        )
+        mi_sum += neighbor_mutual_information(synthetic, grid_width, grid_height)
+
+    return mi_sum / n_samples
+
+
+def neighbor_transfer_entropy(
+    sim_log: Sequence[tuple[int, int, int, int, int]],
+    grid_width: int,
+    grid_height: int,
+) -> float:
+    """Transfer entropy from neighbor states to agent next-state.
+
+    TE = I(neighbor_state_t ; agent_state_{t+1} | agent_state_t)
+
+    *sim_log* is a sequence of (step, agent_id, x, y, state) tuples.
+    Returns 0.0 for empty or insufficient data.
+    """
+    if not sim_log:
+        return 0.0
+
+    # Organize by step
+    by_step: dict[int, dict[int, tuple[int, int, int]]] = {}
+    for step, agent_id, x, y, state in sim_log:
+        by_step.setdefault(step, {})[agent_id] = (x, y, state)
+
+    sorted_steps = sorted(by_step.keys())
+    if len(sorted_steps) < 2:
+        return 0.0
+
+    # Collect triplets: (agent_state_t, neighbor_state_t, agent_state_{t+1})
+    triplets: list[tuple[int, int, int]] = []
+    for i in range(len(sorted_steps) - 1):
+        t = sorted_steps[i]
+        t1 = sorted_steps[i + 1]
+        agents_t = by_step[t]
+        agents_t1 = by_step[t1]
+
+        for agent_id, (x, y, state_t) in agents_t.items():
+            if agent_id not in agents_t1:
+                continue
+            state_t1 = agents_t1[agent_id][2]
+            # Check von Neumann neighbors at time t
+            neighbors = (
+                ((x + 1) % grid_width, y),
+                ((x - 1) % grid_width, y),
+                (x, (y + 1) % grid_height),
+                (x, (y - 1) % grid_height),
+            )
+            for nx, ny in neighbors:
+                for other_id, (ox, oy, ostate) in agents_t.items():
+                    if other_id == agent_id:
+                        continue
+                    if ox == nx and oy == ny:
+                        triplets.append((state_t, ostate, state_t1))
+
+    if not triplets:
+        return 0.0
+
+    n = len(triplets)
+    # Count distributions for TE = H(Y|X) - H(Y|X,Z)
+    # where X=agent_state_t, Z=neighbor_state_t, Y=agent_state_{t+1}
+    joint_xyz = Counter(triplets)
+    joint_xy = Counter((x, y_val) for x, _, y_val in triplets)
+    joint_xz = Counter((x, z) for x, z, _ in triplets)
+    count_x = Counter(x for x, _, _ in triplets)
+
+    # TE = sum p(x,z,y) * log2( p(y|x,z) / p(y|x) )
+    #    = sum p(x,z,y) * log2( p(x,z,y) * p(x) / (p(x,z) * p(x,y)) )
+    te = 0.0
+    for (x, z, y_val), c_xyz in joint_xyz.items():
+        p_xyz = c_xyz / n
+        p_xz = joint_xz[(x, z)] / n
+        p_xy = joint_xy[(x, y_val)] / n
+        p_x = count_x[x] / n
+        if p_xz > 0 and p_xy > 0 and p_x > 0:
+            ratio = (p_xyz * p_x) / (p_xz * p_xy)
+            if ratio > 0:
+                te += p_xyz * math.log2(ratio)
+
+    # Miller-Madow correction
+    k_xyz = len(joint_xyz)
+    k_xz = len(joint_xz)
+    k_xy = len(joint_xy)
+    k_x = len(count_x)
+    correction = (k_xyz - k_xz - k_xy + k_x) / (2 * n * math.log(2))
+    return max(te - correction, 0.0)
+
+
 def block_ncd(left: bytes, right: bytes) -> float:
     """Compute normalized compression distance for two byte blocks."""
     if not left and not right:

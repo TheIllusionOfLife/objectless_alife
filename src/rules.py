@@ -13,13 +13,20 @@ class ObservationPhase(Enum):
     PHASE2_PROFILE = 2
     CONTROL_DENSITY_CLOCK = 3
     RANDOM_WALK = 4
+    PHASE1_CAPACITY_MATCHED = 5
+    PHASE2_RANDOM_ENCODING = 6
 
 
 def rule_table_size(phase: ObservationPhase) -> int:
     """Return rule table length for the selected observation phase."""
     if phase == ObservationPhase.PHASE1_DENSITY:
         return 20
-    if phase in (ObservationPhase.PHASE2_PROFILE, ObservationPhase.CONTROL_DENSITY_CLOCK):
+    if phase in (
+        ObservationPhase.PHASE2_PROFILE,
+        ObservationPhase.CONTROL_DENSITY_CLOCK,
+        ObservationPhase.PHASE1_CAPACITY_MATCHED,
+        ObservationPhase.PHASE2_RANDOM_ENCODING,
+    ):
         return 100
     if phase == ObservationPhase.RANDOM_WALK:
         return 1
@@ -81,8 +88,39 @@ def compute_control_index(self_state: int, neighbor_count: int, step_mod: int) -
     return self_state * 25 + neighbor_count * CLOCK_PERIOD + step_mod
 
 
+def compute_capacity_matched_index(
+    self_state: int, neighbor_count: int, dominant_state: int
+) -> int:
+    """Compute capacity-matched Phase-1 index (100-entry table, Phase-1 observations).
+
+    Uses Phase-2-style slots (100 entries) but aliases indices so that
+    all ``dominant_state`` values for the same ``(self_state, neighbor_count)``
+    map to the same action.  This tests whether table capacity alone
+    explains the Phase-2 advantage.
+    """
+    if not 0 <= self_state <= 3:
+        raise ValueError("self_state must be in [0, 3]")
+    if not 0 <= neighbor_count <= 4:
+        raise ValueError("neighbor_count must be in [0, 4]")
+    if not 0 <= dominant_state <= 4:
+        raise ValueError("dominant_state must be in [0, 4]")
+    return self_state * 25 + neighbor_count * 5 + dominant_state
+
+
 def generate_rule_table(phase: ObservationPhase, seed: int) -> list[int]:
     """Generate a seeded rule table with action IDs in [0, 8]."""
     rng = Random(seed)
     size = rule_table_size(phase)
+
+    if phase == ObservationPhase.PHASE1_CAPACITY_MATCHED:
+        # Generate 20 base actions (Phase-1 observations), then tile to 100
+        base = [rng.randint(0, 8) for _ in range(20)]
+        table = [0] * 100
+        for s in range(4):
+            for n in range(5):
+                action = base[s * 5 + n]
+                for d in range(5):
+                    table[s * 25 + n * 5 + d] = action
+        return table
+
     return [rng.randint(0, 8) for _ in range(size)]

@@ -22,6 +22,31 @@ from scipy.stats import chi2_contingency, mannwhitneyu, pointbiserialr
 from src.run_search import PHASE_SUMMARY_METRIC_NAMES
 
 
+def wilson_score_ci(
+    successes: int,
+    total: int,
+    ci_level: float = 0.95,
+) -> tuple[float, float]:
+    """Wilson score confidence interval for a binomial proportion.
+
+    Returns (lower, upper) bounds.  Returns (NaN, NaN) when *total* is 0.
+    """
+    if total == 0:
+        return (float("nan"), float("nan"))
+
+    from scipy.stats import norm
+
+    z = norm.ppf(1.0 - (1.0 - ci_level) / 2.0)
+    p_hat = successes / total
+    z2 = z * z
+    denom = 1.0 + z2 / total
+    centre = (p_hat + z2 / (2.0 * total)) / denom
+    spread = z * ((p_hat * (1.0 - p_hat) / total + z2 / (4.0 * total * total)) ** 0.5) / denom
+    lo = max(centre - spread, 0.0)
+    hi = min(centre + spread, 1.0)
+    return (lo, hi)
+
+
 def bootstrap_median_ci(
     vals1: list[float],
     vals2: list[float],
