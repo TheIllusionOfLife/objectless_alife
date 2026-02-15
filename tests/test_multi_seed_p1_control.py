@@ -39,7 +39,6 @@ def _setup_phase_data(
 class TestRunMultiSeedForPhase:
     def test_produces_output_parquet_for_phase1(self, tmp_path: Path) -> None:
         from scripts.multi_seed_p1_control import run_multi_seed_for_phase
-
         from src.rules import ObservationPhase
 
         data_dir = tmp_path / "data"
@@ -60,7 +59,6 @@ class TestRunMultiSeedForPhase:
 
     def test_produces_output_parquet_for_control(self, tmp_path: Path) -> None:
         from scripts.multi_seed_p1_control import run_multi_seed_for_phase
-
         from src.rules import ObservationPhase
 
         data_dir = tmp_path / "data"
@@ -85,18 +83,46 @@ class TestSummarizeMultiSeedResults:
 
         # Write synthetic multi-seed data
         rows = [
-            {"rule_seed": 0, "sim_seed": 0, "survived": True, "termination_reason": None,
-             "neighbor_mutual_information": 0.5, "mi_shuffle_null": 0.1,
-             "mi_excess": 0.4, "same_state_adjacency_fraction": 0.3},
-            {"rule_seed": 0, "sim_seed": 1, "survived": True, "termination_reason": None,
-             "neighbor_mutual_information": 0.3, "mi_shuffle_null": 0.1,
-             "mi_excess": 0.2, "same_state_adjacency_fraction": 0.25},
-            {"rule_seed": 1, "sim_seed": 10000, "survived": False, "termination_reason": "halt",
-             "neighbor_mutual_information": 0.0, "mi_shuffle_null": 0.0,
-             "mi_excess": 0.0, "same_state_adjacency_fraction": 0.0},
-            {"rule_seed": 1, "sim_seed": 10001, "survived": True, "termination_reason": None,
-             "neighbor_mutual_information": 0.0, "mi_shuffle_null": 0.05,
-             "mi_excess": 0.0, "same_state_adjacency_fraction": 0.2},
+            {
+                "rule_seed": 0,
+                "sim_seed": 0,
+                "survived": True,
+                "termination_reason": None,
+                "neighbor_mutual_information": 0.5,
+                "mi_shuffle_null": 0.1,
+                "mi_excess": 0.4,
+                "same_state_adjacency_fraction": 0.3,
+            },
+            {
+                "rule_seed": 0,
+                "sim_seed": 1,
+                "survived": True,
+                "termination_reason": None,
+                "neighbor_mutual_information": 0.3,
+                "mi_shuffle_null": 0.1,
+                "mi_excess": 0.2,
+                "same_state_adjacency_fraction": 0.25,
+            },
+            {
+                "rule_seed": 1,
+                "sim_seed": 10000,
+                "survived": False,
+                "termination_reason": "halt",
+                "neighbor_mutual_information": 0.0,
+                "mi_shuffle_null": 0.0,
+                "mi_excess": 0.0,
+                "same_state_adjacency_fraction": 0.0,
+            },
+            {
+                "rule_seed": 1,
+                "sim_seed": 10001,
+                "survived": True,
+                "termination_reason": None,
+                "neighbor_mutual_information": 0.0,
+                "mi_shuffle_null": 0.05,
+                "mi_excess": 0.0,
+                "same_state_adjacency_fraction": 0.2,
+            },
         ]
         path = tmp_path / "logs" / "multi_seed_results.parquet"
         path.parent.mkdir(parents=True)
@@ -116,18 +142,46 @@ class TestSummarizeMultiSeedResults:
         # Rule 0: both seeds have positive MI_excess → positive median
         # Rule 1: all seeds have zero MI_excess → zero median
         rows = [
-            {"rule_seed": 0, "sim_seed": 0, "survived": True, "termination_reason": None,
-             "neighbor_mutual_information": 0.5, "mi_shuffle_null": 0.1,
-             "mi_excess": 0.4, "same_state_adjacency_fraction": 0.3},
-            {"rule_seed": 0, "sim_seed": 1, "survived": True, "termination_reason": None,
-             "neighbor_mutual_information": 0.3, "mi_shuffle_null": 0.1,
-             "mi_excess": 0.2, "same_state_adjacency_fraction": 0.25},
-            {"rule_seed": 1, "sim_seed": 10000, "survived": True, "termination_reason": None,
-             "neighbor_mutual_information": 0.05, "mi_shuffle_null": 0.05,
-             "mi_excess": 0.0, "same_state_adjacency_fraction": 0.2},
-            {"rule_seed": 1, "sim_seed": 10001, "survived": True, "termination_reason": None,
-             "neighbor_mutual_information": 0.04, "mi_shuffle_null": 0.05,
-             "mi_excess": 0.0, "same_state_adjacency_fraction": 0.2},
+            {
+                "rule_seed": 0,
+                "sim_seed": 0,
+                "survived": True,
+                "termination_reason": None,
+                "neighbor_mutual_information": 0.5,
+                "mi_shuffle_null": 0.1,
+                "mi_excess": 0.4,
+                "same_state_adjacency_fraction": 0.3,
+            },
+            {
+                "rule_seed": 0,
+                "sim_seed": 1,
+                "survived": True,
+                "termination_reason": None,
+                "neighbor_mutual_information": 0.3,
+                "mi_shuffle_null": 0.1,
+                "mi_excess": 0.2,
+                "same_state_adjacency_fraction": 0.25,
+            },
+            {
+                "rule_seed": 1,
+                "sim_seed": 10000,
+                "survived": True,
+                "termination_reason": None,
+                "neighbor_mutual_information": 0.05,
+                "mi_shuffle_null": 0.05,
+                "mi_excess": 0.0,
+                "same_state_adjacency_fraction": 0.2,
+            },
+            {
+                "rule_seed": 1,
+                "sim_seed": 10001,
+                "survived": True,
+                "termination_reason": None,
+                "neighbor_mutual_information": 0.04,
+                "mi_shuffle_null": 0.05,
+                "mi_excess": 0.0,
+                "same_state_adjacency_fraction": 0.2,
+            },
         ]
         path = tmp_path / "logs" / "multi_seed_results.parquet"
         path.parent.mkdir(parents=True)

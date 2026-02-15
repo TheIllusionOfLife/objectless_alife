@@ -125,9 +125,9 @@ class TestComputeConditionStats:
         assert stats["n"] == 5
 
     def test_empty_values_returns_nan(self) -> None:
-        from scripts.metric_comparison import compute_condition_stats
-
         import math
+
+        from scripts.metric_comparison import compute_condition_stats
 
         stats = compute_condition_stats([])
         assert math.isnan(stats["median"])

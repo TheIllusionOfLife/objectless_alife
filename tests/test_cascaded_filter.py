@@ -47,20 +47,20 @@ class TestRunWithMediumFilters:
 class TestCompareSurvival:
     def test_correct_survival_counts(self) -> None:
         from scripts.cascaded_filter_analysis import compare_survival
-
         from src.run_search import SimulationResult
 
+        _s = SimulationResult
         weak = [
-            SimulationResult("r0", survived=True, terminated_at=None, termination_reason=None),
-            SimulationResult("r1", survived=True, terminated_at=None, termination_reason=None),
-            SimulationResult("r2", survived=False, terminated_at=50, termination_reason="halt"),
-            SimulationResult("r3", survived=False, terminated_at=10, termination_reason="state_uniform"),
+            _s("r0", survived=True, terminated_at=None, termination_reason=None),
+            _s("r1", survived=True, terminated_at=None, termination_reason=None),
+            _s("r2", survived=False, terminated_at=50, termination_reason="halt"),
+            _s("r3", survived=False, terminated_at=10, termination_reason="state_uniform"),
         ]
         medium = [
-            SimulationResult("r0", survived=True, terminated_at=None, termination_reason=None),
-            SimulationResult("r1", survived=False, terminated_at=80, termination_reason="short_period"),
-            SimulationResult("r2", survived=False, terminated_at=50, termination_reason="halt"),
-            SimulationResult("r3", survived=False, terminated_at=10, termination_reason="state_uniform"),
+            _s("r0", survived=True, terminated_at=None, termination_reason=None),
+            _s("r1", survived=False, terminated_at=80, termination_reason="short_period"),
+            _s("r2", survived=False, terminated_at=50, termination_reason="halt"),
+            _s("r3", survived=False, terminated_at=10, termination_reason="state_uniform"),
         ]
 
         result = compare_survival(weak, medium)
@@ -87,7 +87,6 @@ class TestCascadedFilterEnd2End:
             compare_survival,
             run_with_medium_filters,
         )
-
         from src.run_search import run_batch_search
 
         phase = ObservationPhase.PHASE1_DENSITY
