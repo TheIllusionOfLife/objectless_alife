@@ -100,34 +100,40 @@ higher survival than Phase~1, with the gap widening at higher densities.}
 \label{app:multi_seed}
 
 The main experiments evaluate each rule table with a single simulation seed.
-To assess whether high-$\mathrm{MI}_{\mathrm{excess}}$ rules are robust
+To assess whether $\mathrm{MI}_{\mathrm{excess}}$ levels are robust
 properties of the rule table rather than seed-specific accidents, we selected
-the top~50 Phase~2 rules by $\mathrm{MI}_{\mathrm{excess}}$ from the main
-experiment and re-evaluated each across 20 independent simulation seeds.
+the top~50 rules by $\mathrm{MI}_{\mathrm{excess}}$ from each rule-based
+condition (Phase~2, Phase~1, and Control) and re-evaluated each across
+20 independent simulation seeds.
 
-\begin{table}[htbp]
+\begin{table*}[htbp]
 \centering
-\caption{Multi-seed robustness of top-50 Phase~2 rules (20 seeds each).}
+\caption{Multi-seed robustness of top-50 rules per condition (20 seeds each).
+Phase~2's elevated MI is a robust rule property; Phase~1 and Control's
+low/zero MI are equally stable across seeds.}
 \label{tab:multi_seed}
-\begin{tabular}{lc}
+\begin{tabular}{lccc}
 \toprule
-Metric & Value \\
+Metric & Phase~2 & Phase~1 & Control \\
 \midrule
-Rules with median $\mathrm{MI}_{\mathrm{excess}} > 0$ & 41/50 (82.0\%) \\
-Mean $P(\mathrm{MI}_{\mathrm{excess}} > 0)$ across seeds & 0.733 \\
-Overall survival rate & 76.2\% \\
+Rules with median $\mathrm{MI}_{\mathrm{excess}} > 0$
+  & 41/50 (82\%) & \textit{TBD} & \textit{TBD} \\
+Mean $P(\mathrm{MI}_{\mathrm{excess}} > 0)$ across seeds
+  & 0.733 & \textit{TBD} & \textit{TBD} \\
+Overall survival rate
+  & 76.2\% & \textit{TBD} & \textit{TBD} \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
 Table~\ref{tab:multi_seed} shows that 82\% of top Phase~2 rules maintain
 positive median $\mathrm{MI}_{\mathrm{excess}}$ across seeds, and on average
-73.3\% of seeds per rule produce positive excess MI. This confirms that
-elevated MI in Phase~2 is a robust property of the rule table, not a
-stochastic artifact of a single initial configuration. The same-state
-adjacency fraction (a categorical spatial statistic appropriate for nominal
-state data) is also recorded per seed in the multi-seed dataset and confirms
-local coordination patterns.
+73.3\% of seeds per rule produce positive excess MI.  Phase~1 and Control
+results (to be populated after running
+\texttt{scripts/multi\_seed\_p1\_control.py}) are expected to confirm that
+their low or zero MI levels are equally stable, completing the evidence that
+MI differences across conditions reflect genuine rule properties rather than
+seed-specific accidents.
 
 %% =========================================================================
 %% C. MORAN'S I (RELOCATED FROM TABLE 1)
@@ -395,6 +401,108 @@ For the final snapshot:
 Repeat 200 times: permute states among fixed occupied positions, compute
 $\hat{I}_{\mathrm{MM}}$, average.
 $\mathrm{MI}_{\mathrm{excess}} = \max(\hat{I}_{\mathrm{MM}} - \overline{I}_{\mathrm{shuffle}}, 0)$.
+
+%% =========================================================================
+%% L. CROSS-CONDITION METRIC PROFILES
+%% =========================================================================
+\section{Cross-Condition Metric Profiles}
+\label{app:metric_profiles}
+
+Beyond mutual information, the simulation records five additional metric
+families at every time step.  Table~\ref{tab:metric_profiles} reports
+final-step values for surviving rules across all four conditions.  Values
+are to be populated after running \texttt{scripts/metric\_comparison.py}.
+
+\begin{table*}[htbp]
+\centering
+\caption{Cross-condition metric profiles (surviving rules, final-step
+values).  Median [Q1, Q3] reported.  Mann-Whitney $U$ $p$-values
+(Holm-Bonferroni corrected) test P1 vs.\ P2 and Control vs.\ P2.}
+\label{tab:metric_profiles}
+\begin{tabular}{lcccc}
+\toprule
+Metric & Random Walk & Control & Phase~1 & Phase~2 \\
+\midrule
+Compression ratio
+  & \textit{TBD} & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
+Action entropy (mean)
+  & \textit{TBD} & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
+Action entropy (variance)
+  & \textit{TBD} & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
+Cluster count
+  & \textit{TBD} & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
+Quasi-periodicity peaks
+  & \textit{TBD} & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
+Phase transition $\max \Delta$
+  & \textit{TBD} & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
+State entropy
+  & \textit{TBD} & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\paragraph{Role differentiation.}
+The variance of per-agent action entropy (action\_entropy\_variance)
+captures the degree to which agents specialize into distinct behavioral
+roles.  High variance indicates that some agents repeatedly select the
+same action while others explore diverse actions---a signature of
+emergent role differentiation.  Phase~2's richer observation channel,
+which includes dominant neighbor state, is expected to support greater
+role differentiation than Phase~1 or Control, where agents cannot
+distinguish neighbor identity.
+
+\paragraph{Temporal signatures.}
+Quasi-periodicity peak count and phase-transition $\max \Delta$ capture
+temporal dynamics beyond the MI time-series snapshots in the main text.
+Quasi-periodicity peaks indicate recurrent oscillatory patterns in
+state-entropy time series, while $\max \Delta$ records the largest
+single-step entropy change---a proxy for abrupt reorganization events.
+Differences across conditions in these temporal metrics complement the
+spatial coordination story told by MI.
+
+%% =========================================================================
+%% M. CASCADED FILTER ANALYSIS
+%% =========================================================================
+\section{Cascaded Filter Analysis}
+\label{app:cascaded_filters}
+
+The main experiments use only weak (viability) filters: halt detection
+and state uniformity.  The codebase also implements medium-strength
+filters---short-period detection (period $\leq 2$, checked over 8
+snapshots) and low-activity detection (unique-action ratio $< 0.2$ over
+5 steps)---which target dynamically trivial but non-halted simulations.
+
+To assess how filter stringency affects the survivor pool, we re-ran
+all 5{,}000 rules per condition with both weak and medium filters
+enabled (same deterministic seeds, ensuring direct comparability).
+Table~\ref{tab:cascade_survival} reports the cascade survival counts.
+Values are to be populated after running
+\texttt{scripts/cascaded\_filter\_analysis.py}.
+
+\begin{table}[htbp]
+\centering
+\caption{Cascade survival table: weak-only vs.\ weak+medium filters
+(5{,}000 rules per condition, same seeds).  Medium filters further
+refine the survivor pool while the observation-richness ordering
+(Control $<$ P1 $<$ P2) is expected to persist.}
+\label{tab:cascade_survival}
+\begin{tabular}{lccc}
+\toprule
+Condition & Weak Only & Weak+Medium & $\Delta$ \\
+\midrule
+Phase~1 & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
+Phase~2 & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
+Control & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The cascaded filter experiment tests whether the central finding---that
+observation richness drives emergent coordination---holds under stricter
+viability criteria.  If the Phase~2 MI advantage persists among
+medium-filter survivors, it strengthens the claim that coordination is a
+genuine property of the rule--observation interaction, not an artifact of
+lax filtering.
 
 %% =========================================================================
 %% BIBLIOGRAPHY

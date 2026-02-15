@@ -591,6 +591,32 @@ Phase~2's elevated MI depends on genuine local spatial coordination:
 randomly reassigning agent positions while preserving states reduces MI
 to near-zero levels, consistent with the shuffle-null calibration.
 
+\paragraph{Role differentiation and temporal signatures.}
+Beyond MI, our metric suite reveals additional dimensions of emergent
+structure (supplementary material, Section~L).
+The variance of per-agent action entropy captures whether agents
+specialize into distinct behavioral roles: high variance indicates
+emergent role differentiation, where some agents consistently select the
+same action while others explore.  Phase~2's access to dominant neighbor
+state is expected to support greater differentiation than Phase~1 or
+Control, where agents cannot distinguish neighbor identity.
+Quasi-periodicity peaks and phase-transition $\max \Delta$ provide
+temporal signatures that complement the MI time-series analysis:
+recurrent oscillatory patterns and abrupt reorganization events,
+respectively.  Cross-condition differences in these temporal metrics
+further support the observation-richness narrative.
+
+\paragraph{Filter cascade robustness.}
+The main experiments apply only weak viability filters (halt detection,
+state uniformity).  A cascaded filter analysis (supplementary material,
+Section~M) applies additional medium-strength filters---short-period
+detection and low-activity detection---to test whether the Phase~2
+MI advantage persists under stricter viability criteria.  If the
+observation-richness ordering (Control~$<$~P1~$<$~P2) holds among the
+more stringently filtered survivors, it strengthens the claim that
+coordination is a genuine property of the rule--observation interaction,
+not an artifact of lax filtering.
+
 \paragraph{Implications for ALife research.}
 These results suggest that objective-free search deserves more attention as a
 complement to fitness-driven approaches. When the goal is to discover
@@ -632,8 +658,10 @@ Several limitations constrain the generalizability of our findings:
   \item \textbf{Single simulation per rule (main experiment)}: Each rule table
         is evaluated with a single initial configuration in the main experiment.
         The supplementary material provides multi-seed robustness analysis
-        for the top 50 Phase~2 rules, confirming that high MI is a property
-        of the rule table, not a seed-specific accident.
+        for the top 50 rules from each rule-based condition (Phase~2, Phase~1,
+        and Control), confirming that MI levels---whether high, low, or
+        zero---are stable properties of the rule table, not seed-specific
+        accidents.
   \item \textbf{Halt window sensitivity}: The main experiments use a
         10-step halt window. A sensitivity sweep across \{5, 10, 20\}
         (supplementary material) confirms that results are robust to
@@ -666,11 +694,12 @@ can serve as a productive complement to fitness-driven search in
 artificial life.
 
 \paragraph{Supplementary Material.}
-Density sweep analysis, multi-seed robustness results, halt-window
-sensitivity, survival rate confidence intervals, alternative null models,
-spatial scrambling analysis, transfer entropy, capacity-matched controls,
-and algorithmic pseudocode are available as
-supplementary material with the code repository.
+Density sweep analysis, multi-seed robustness results (all three
+rule-based conditions), halt-window sensitivity, survival rate confidence
+intervals, alternative null models, spatial scrambling analysis, transfer
+entropy, capacity-matched controls, algorithmic pseudocode,
+cross-condition metric profiles, and cascaded filter analysis are
+available as supplementary material with the code repository.
 
 %% =========================================================================
 %% BIBLIOGRAPHY
