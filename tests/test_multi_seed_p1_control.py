@@ -190,3 +190,60 @@ class TestSummarizeMultiSeedResults:
         summary = summarize_multi_seed_results(path)
         assert summary["rules_with_positive_median"] == 1
         assert summary["fraction_with_positive_median"] == pytest.approx(0.5)
+
+    def test_zero_survivor_rules_counted_in_mean_positive_fraction(self, tmp_path: Path) -> None:
+        from scripts.multi_seed_p1_control import summarize_multi_seed_results
+
+        # Rule 0: both seeds survive with positive MI_excess
+        # Rule 1: all seeds fail → should contribute 0.0 to mean_positive_fraction
+        rows = [
+            {
+                "rule_seed": 0,
+                "sim_seed": 0,
+                "survived": True,
+                "termination_reason": None,
+                "neighbor_mutual_information": 0.5,
+                "mi_shuffle_null": 0.1,
+                "mi_excess": 0.4,
+                "same_state_adjacency_fraction": 0.3,
+            },
+            {
+                "rule_seed": 0,
+                "sim_seed": 1,
+                "survived": True,
+                "termination_reason": None,
+                "neighbor_mutual_information": 0.3,
+                "mi_shuffle_null": 0.1,
+                "mi_excess": 0.2,
+                "same_state_adjacency_fraction": 0.25,
+            },
+            {
+                "rule_seed": 1,
+                "sim_seed": 10000,
+                "survived": False,
+                "termination_reason": "halt",
+                "neighbor_mutual_information": 0.0,
+                "mi_shuffle_null": 0.0,
+                "mi_excess": 0.0,
+                "same_state_adjacency_fraction": 0.0,
+            },
+            {
+                "rule_seed": 1,
+                "sim_seed": 10001,
+                "survived": False,
+                "termination_reason": "halt",
+                "neighbor_mutual_information": 0.0,
+                "mi_shuffle_null": 0.0,
+                "mi_excess": 0.0,
+                "same_state_adjacency_fraction": 0.0,
+            },
+        ]
+        path = tmp_path / "logs" / "multi_seed_results.parquet"
+        path.parent.mkdir(parents=True)
+        pq.write_table(pa.Table.from_pylist(rows, schema=MULTI_SEED_SCHEMA), path)
+
+        summary = summarize_multi_seed_results(path)
+        # Rule 0: frac=1.0, Rule 1: frac=0.0 → mean = 0.5
+        assert summary["mean_positive_fraction"] == pytest.approx(0.5)
+        assert summary["total_rules"] == 2
+        assert summary["rules_with_positive_median"] == 1

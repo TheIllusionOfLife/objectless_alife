@@ -67,25 +67,6 @@ def run_with_medium_filters(
     )
 
 
-def compare_survival(
-    weak_results: list[SimulationResult],
-    medium_results: list[SimulationResult],
-) -> dict:
-    """Compare survival counts between weak-only and weak+medium filter runs."""
-    weak_survived = sum(1 for r in weak_results if r.survived)
-    medium_survived = sum(1 for r in medium_results if r.survived)
-    weak_total = len(weak_results)
-    medium_total = len(medium_results)
-    return {
-        "weak_survived": weak_survived,
-        "weak_total": weak_total,
-        "weak_survival_rate": weak_survived / weak_total if weak_total > 0 else 0.0,
-        "medium_survived": medium_survived,
-        "medium_total": medium_total,
-        "medium_survival_rate": medium_survived / medium_total if medium_total > 0 else 0.0,
-    }
-
-
 def _load_mi_excess_for_survivors(
     metrics_path: Path,
     rules_dir: Path,

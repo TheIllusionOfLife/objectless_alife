@@ -126,15 +126,15 @@ def compare_conditions(
 
     for i in range(len(labels)):
         for j in range(i + 1, len(labels)):
-            vals_a = [v for v in condition_values[labels[i]] if v is not None and v == v]
-            vals_b = [v for v in condition_values[labels[j]] if v is not None and v == v]
+            vals_a = [v for v in condition_values[labels[i]] if v is not None and not math.isnan(v)]
+            vals_b = [v for v in condition_values[labels[j]] if v is not None and not math.isnan(v)]
 
             if len(vals_a) < 2 or len(vals_b) < 2:
                 continue
 
             u_stat, p_value = mannwhitneyu(vals_a, vals_b, alternative="two-sided")
             n_a, n_b = len(vals_a), len(vals_b)
-            cliffs_d = 1.0 - (2.0 * u_stat) / (n_a * n_b)
+            cliffs_d = (2.0 * u_stat) / (n_a * n_b) - 1.0
 
             key = f"{labels[i]} vs {labels[j]}"
             results[key] = {

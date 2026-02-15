@@ -97,6 +97,8 @@ def summarize_multi_seed_results(results_path: Path) -> dict:
                 rules_with_positive_median += 1
             positive_frac = sum(1 for v in mi_excess_vals if v > 0) / len(mi_excess_vals)
             mi_excess_positive_fracs.append(positive_frac)
+        else:
+            mi_excess_positive_fracs.append(0.0)
 
     n_rules = len(rule_seeds)
     return {

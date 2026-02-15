@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from src.rules import ObservationPhase
 
 
@@ -44,49 +42,9 @@ class TestRunWithMediumFilters:
             assert "low_activity" in payload["filter_results"]
 
 
-class TestCompareSurvival:
-    def test_correct_survival_counts(self) -> None:
-        from scripts.cascaded_filter_analysis import compare_survival
-        from src.run_search import SimulationResult
-
-        _s = SimulationResult
-        weak = [
-            _s("r0", survived=True, terminated_at=None, termination_reason=None),
-            _s("r1", survived=True, terminated_at=None, termination_reason=None),
-            _s("r2", survived=False, terminated_at=50, termination_reason="halt"),
-            _s("r3", survived=False, terminated_at=10, termination_reason="state_uniform"),
-        ]
-        medium = [
-            _s("r0", survived=True, terminated_at=None, termination_reason=None),
-            _s("r1", survived=False, terminated_at=80, termination_reason="short_period"),
-            _s("r2", survived=False, terminated_at=50, termination_reason="halt"),
-            _s("r3", survived=False, terminated_at=10, termination_reason="state_uniform"),
-        ]
-
-        result = compare_survival(weak, medium)
-        assert result["weak_survived"] == 2
-        assert result["weak_total"] == 4
-        assert result["medium_survived"] == 1
-        assert result["medium_total"] == 4
-        assert result["weak_survival_rate"] == pytest.approx(0.5)
-        assert result["medium_survival_rate"] == pytest.approx(0.25)
-
-    def test_empty_results(self) -> None:
-        from scripts.cascaded_filter_analysis import compare_survival
-
-        result = compare_survival([], [])
-        assert result["weak_survived"] == 0
-        assert result["weak_total"] == 0
-        assert result["medium_survived"] == 0
-        assert result["medium_total"] == 0
-
-
 class TestCascadedFilterEnd2End:
     def test_full_pipeline_small_run(self, tmp_path: Path) -> None:
-        from scripts.cascaded_filter_analysis import (
-            compare_survival,
-            run_with_medium_filters,
-        )
+        from scripts.cascaded_filter_analysis import run_with_medium_filters
         from src.run_search import run_batch_search
 
         phase = ObservationPhase.PHASE1_DENSITY
@@ -110,8 +68,9 @@ class TestCascadedFilterEnd2End:
             steps=10,
         )
 
-        comparison = compare_survival(weak_results, medium_results)
-        assert comparison["weak_total"] == n_rules
-        assert comparison["medium_total"] == n_rules
+        weak_survived = sum(1 for r in weak_results if r.survived)
+        medium_survived = sum(1 for r in medium_results if r.survived)
+        assert len(weak_results) == n_rules
+        assert len(medium_results) == n_rules
         # Medium filters can only reduce or maintain survival
-        assert comparison["medium_survived"] <= comparison["weak_survived"]
+        assert medium_survived <= weak_survived

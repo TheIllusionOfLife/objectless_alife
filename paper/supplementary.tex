@@ -216,8 +216,8 @@ top-50 rules either survive to completion or halt well within the first
 Condition & Survived / Total & Rate & 95\% CI \\
 \midrule
 Random Walk & 5000/5000 & 100.0\% & [99.9, 100.0]\% \\
-Control     & 2225/5000 & 44.5\%  & [43.1, 45.9]\% \\
-Phase 1     & 3570/5000 & 71.4\%  & [70.1, 72.6]\% \\
+Control     & 2226/5000 & 44.5\%  & [43.1, 45.9]\% \\
+Phase 1     & 3571/5000 & 71.4\%  & [70.1, 72.7]\% \\
 Phase 2     & 3735/5000 & 74.7\%  & [73.5, 75.9]\% \\
 \bottomrule
 \end{tabular}
@@ -410,16 +410,18 @@ $\mathrm{MI}_{\mathrm{excess}} = \max(\hat{I}_{\mathrm{MM}} - \overline{I}_{\mat
 \label{app:metric_profiles}
 
 Beyond mutual information, the simulation records five additional metric
-families at every time step.  Table~\ref{tab:metric_profiles} reports
-final-step values for surviving rules across all four conditions.
-All pairwise comparisons (Mann-Whitney $U$, Holm-Bonferroni corrected)
-are significant at $p < 0.001$ for every metric.
+families (seven individual metrics) at every time step.
+Table~\ref{tab:metric_profiles} reports final-step values for surviving
+rules across all four conditions.  All pairwise comparisons
+(Mann-Whitney $U$, Holm-Bonferroni corrected) are significant at
+$p < 0.001$ for every metric.
 
 \begin{table*}[htbp]
 \centering
 \caption{Cross-condition metric profiles (surviving rules, final-step
-values).  Median [Q1, Q3] reported.  Mann-Whitney $U$ $p$-values
-(Holm-Bonferroni corrected) test P1 vs.\ P2 and Control vs.\ P2.}
+values).  Median [Q1, Q3] reported.  All pairwise Mann-Whitney $U$
+tests (Holm-Bonferroni corrected) are significant at $p < 0.001$;
+effect sizes are reported in the text as Cliff's $|\delta|$.}
 \label{tab:metric_profiles}
 \begin{tabular}{lcccc}
 \toprule
@@ -451,9 +453,9 @@ same action while others explore diverse actions---a signature of
 emergent role differentiation.  Phase~2 exhibits the highest action
 entropy variance (median 0.190), followed by Phase~1 (0.152), while
 Control (0.020) and Random Walk ($< 0.001$) show minimal differentiation.
-The Phase~1 vs.\ Phase~2 difference is significant ($\delta = 0.185$,
-$p < 10^{-42}$), confirming that richer observations support greater
-role specialization.
+The Phase~1 vs.\ Phase~2 difference is significant (Cliff's
+$|\delta| = 0.185$, $p < 10^{-42}$), confirming that richer
+observations support greater role specialization.
 
 \paragraph{Temporal signatures.}
 Quasi-periodicity peak count and phase-transition $\max \Delta$ capture
@@ -466,9 +468,9 @@ without genuine spatial coordination ($\mathrm{MI}_{\mathrm{excess}}
 \approx 0$).  Phase~1 and Phase~2 show low quasi-periodicity,
 consistent with their spatially structured but temporally stable
 dynamics.  The Phase~1 vs.\ Phase~2 difference in $\max \Delta$ is
-significant ($\delta = 0.119$, $p < 10^{-18}$), suggesting that
-Phase~2's richer observations produce slightly more dynamic temporal
-trajectories.
+significant (Cliff's $|\delta| = 0.119$, $p < 10^{-18}$), suggesting
+that Phase~2's richer observations produce slightly more dynamic
+temporal trajectories.
 
 %% =========================================================================
 %% M. CASCADED FILTER ANALYSIS
