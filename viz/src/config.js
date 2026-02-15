@@ -1,0 +1,14 @@
+export const CANVAS_WIDTH = 1280;
+export const CANVAS_HEIGHT = 720;
+export const GRID_PANEL_HEIGHT = 520;
+export const METRIC_PANEL_HEIGHT = 120;
+export const TEXT_PANEL_HEIGHT = 80;
+export const SUB_FRAMES = 4;
+export const DEFAULT_FPS = 20;
+export const GLOW_RADIUS_FACTOR = 1.5;
+export const BACKGROUND_COLOR = "#0a0a0f";
+export const TRAIL_LENGTH = 6;
+export const GIF_WIDTH = 800;
+export const GIF_HEIGHT = 450;
+export const GIF_LOOP_END_STEP = 100;
+export const GIF_QUALITY = 10;
