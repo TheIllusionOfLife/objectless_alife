@@ -179,17 +179,19 @@ Results are qualitatively unchanged across the tested range.}
 \toprule
 Halt Window & Survival Rate & Median MI\textsubscript{excess} \\
 \midrule
-5  & \emph{see data} & \emph{see data} \\
-10 & \emph{see data} & \emph{see data} \\
-20 & \emph{see data} & \emph{see data} \\
+5  & 78.0\% & 0.486 \\
+10 & 78.0\% & 0.486 \\
+20 & 78.0\% & 0.486 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 Table~\ref{tab:halt_window} confirms that the halt-window parameter has
-minimal impact on the qualitative findings: survival rates and
-MI\textsubscript{excess} distributions remain stable across the tested
-range of 5--20 steps.
+no impact on the qualitative findings for these top-performing rules:
+survival rates (78.0\%) and median MI\textsubscript{excess} (0.486~bits)
+are identical across all three tested windows.  This indicates that the
+top-50 rules either survive to completion or halt well within the first
+5~steps, with no rules in the intermediate regime.
 
 %% =========================================================================
 %% E. SURVIVAL RATES WITH CIs
@@ -259,18 +261,19 @@ that Phase~2's elevated MI reflects genuine spatial coordination.}
 \toprule
 Null Model & Mean Null MI (bits) \\
 \midrule
-State shuffle (main text) & \emph{see data} \\
-Block shuffle ($4 \times 4$) & \emph{see data} \\
-Fixed-marginal & \emph{see data} \\
+State shuffle (main text) & 0.264 \\
+Block shuffle ($4 \times 4$) & 0.899 \\
+Fixed-marginal & 0.250 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The block-shuffle null produces slightly higher MI than the state-shuffle
-null (as expected, since it preserves within-block correlations), while
-the fixed-marginal null is comparable to the state-shuffle.  In all
-cases, observed MI substantially exceeds the null values, confirming
-genuine spatial coordination.
+The block-shuffle null produces substantially higher MI (0.899~bits) than
+the state-shuffle null (0.264~bits), as expected since it preserves
+within-block correlations.  The fixed-marginal null (0.250~bits) is
+comparable to the state-shuffle.  In all cases, mean observed MI for the
+top-50 Phase~2 rules (1.646~bits) substantially exceeds the null values,
+confirming genuine spatial coordination.
 
 %% =========================================================================
 %% H. SPATIAL SCRAMBLING
@@ -284,10 +287,11 @@ spatial scrambling: for each rule's final snapshot, we randomly
 reassigned occupied positions among agents while keeping their states
 fixed ($N = 200$ scrambles per rule).
 
-The scrambled MI drops to near-zero levels for Phase~2 rules, confirming
-that the observed MI arises from genuine local spatial coordination
-(agents with correlated states being \emph{near} each other) rather than
-from the state distribution itself.
+For top-50 Phase~2 rules, the mean observed MI is 1.646~bits while the
+mean scrambled MI drops to 0.270~bits---comparable to the shuffle null
+baseline (0.264~bits).  This confirms that the observed MI arises from
+genuine local spatial coordination (agents with correlated states being
+\emph{near} each other) rather than from the state distribution itself.
 
 %% =========================================================================
 %% I. TRANSFER ENTROPY
@@ -306,10 +310,14 @@ neighboring agent's state.  This measures how much knowing a neighbor's
 current state reduces uncertainty about the focal agent's next state,
 beyond what the agent's own current state provides.
 
-Miller-Madow bias correction is applied.  Phase~2 rules show elevated TE
-compared to Phase~1 and Control, confirming that the spatial coordination
-involves genuine directional information flow from neighbors to agents,
-not merely static correlations.
+Miller-Madow bias correction is applied.  For the top-50 rules in each
+condition, median TE values are: Phase~2 = 0.072~bits, Phase~1 =
+0.003~bits, Control = 0.113~bits.  Phase~2 shows substantially elevated
+TE compared to Phase~1, confirming directional information flow from
+neighbors to agents.  The Control condition's higher TE reflects its
+inclusion of a step-clock dimension that creates temporal state
+dependence without genuine spatial coordination (recall that Control
+$\mathrm{MI}_{\mathrm{excess}} \approx 0$).
 
 %% =========================================================================
 %% J. CAPACITY-MATCHED CONTROLS
@@ -333,10 +341,18 @@ To further isolate the role of observation \emph{content} from table
         beyond alphabet size.
 \end{itemize}
 
-Both controls produce $\mathrm{MI}_{\mathrm{excess}}$ distributions
-significantly below standard Phase~2, confirming that structured
-encoding of neighbor state information---not table capacity or
-alphabet size alone---drives the emergence of spatial coordination.
+The capacity-matched Phase~1 control produces median
+$\mathrm{MI}_{\mathrm{excess}} = 0.000$ (survival 71.4\%), matching
+standard Phase~1 ($\mathrm{MI}_{\mathrm{excess}} = 0.000$) and well below
+standard Phase~2 ($\mathrm{MI}_{\mathrm{excess}} = 0.096$).  This
+confirms that table capacity alone does not explain the Phase~2
+advantage---Phase-1-level observations remain ineffective even with
+100-entry tables.  The random-encoding Phase~2 control produces median
+$\mathrm{MI}_{\mathrm{excess}} = 0.106$ (survival 75.1\%), comparable to
+standard Phase~2, which is expected because the observation encoding
+(self-state, neighbor count, dominant state) is identical; only the
+table-entry ordering differs, which is irrelevant for randomly generated
+tables.
 
 %% =========================================================================
 %% K. SPACE-TIME PLOTS
