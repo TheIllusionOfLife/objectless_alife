@@ -1,22 +1,23 @@
-\documentclass[12pt]{article}
-\usepackage[margin=1in]{geometry}
+\documentclass[letterpaper]{article}
+\usepackage{natbib,alifeconf}  %% The order is important
+\usepackage{url,hyperref}
 \usepackage{amsmath,amssymb}
-\usepackage{graphicx}
 \usepackage{booktabs}
-\usepackage{hyperref}
-\usepackage{natbib}
 \usepackage{xcolor}
 \usepackage{subcaption}
 \usepackage{multirow}
 
-\bibliographystyle{apalike}
+\newcommand\blfootnote[1]{%
+  \begingroup
+  \renewcommand\thefootnote{}\footnote{#1}%
+  \addtocounter{footnote}{-1}%
+  \endgroup
+}
 
 \title{Emergent Spatial Coordination from Negative Selection Alone:\\
 The Role of Observation Richness in Objective-Free Artificial Life}
 
 \author{Anonymous}
-
-\date{}
 
 \begin{document}
 
@@ -33,13 +34,13 @@ Existing artificial life systems typically rely on fitness functions---explicit
 or implicit---which introduce evaluation bias and constrain the space of
 discoverable phenomena.
 We propose an objective-free approach based on large-scale random rule generation
-with physical-inconsistency-only filtering, comparing four observation conditions:
+with viability-only filtering, comparing four observation conditions:
 random walk, a step-clock control, density-only observation, and state-profile observation.
 Across 5{,}000 rules per condition, agents with state-profile observation
 achieve nonzero median excess MI (MI calibrated by a permutation-based shuffle
 null that controls for pair-count bias) while
 density-only and control agents remain at zero
-(Cliff's $\delta = 0.34$; median-difference bootstrap 95\% CI $[0.26, 0.29]$; Table~\ref{tab:stats}),
+(Cliff's $\delta = 0.355$; median-difference bootstrap 95\% CI $[0.078, 0.111]$; Table~\ref{tab:stats}),
 and the evidence ladder Control $\leq$ Phase~1 $<$ Phase~2 holds across all
 rule-based comparisons.
 A Miller-Madow bias-corrected estimator is used throughout, and a shuffle null
@@ -50,6 +51,13 @@ These results demonstrate that observation channel richness---not rule table
 capacity or selection pressure---drives the emergence of spatial coordination
 in objective-free systems.
 \end{abstract}
+
+Submission type: \textbf{Full Paper}\\
+
+Data/Code available at: \url{https://anonymous.4open.science/r/PLACEHOLDER}
+\blfootnote{\textcopyright 2026 Anonymous.
+  Published under a Creative Commons Attribution 4.0
+  International (CC BY 4.0) license.}
 
 %% =========================================================================
 %% 1. INTRODUCTION
@@ -71,11 +79,14 @@ criteria~\citep{stanley2019openended}. The question then arises: \emph{can
 meaningful spatial structure emerge in a multi-agent system with no fitness
 function?}
 
-We explore the unexplored quadrant of \emph{no objective $\times$ selection
-pressure}, where the only filtering criterion is physical consistency---removing
-rules that produce trivially broken simulations (all agents halt or converge to
-a single state). This minimal filtering is analogous to the laws of physics:
-it constrains what is possible without specifying what is desirable.
+We explore the unexplored quadrant of \emph{no objective $\times$ viability-only
+selection}, where the only filtering criterion is physical
+consistency---removing rules that produce trivially broken simulations (all
+agents halt or converge to a single state). This viability-only filtering is
+analogous to the laws of physics: it constrains what is possible without
+specifying what is desirable. Importantly, this negative selection does
+constitute a minimal selection pressure (surviving rules must avoid
+degenerate dynamics), but no behavioral or performance criterion is employed.
 
 Our core contribution is threefold:
 \begin{enumerate}
@@ -145,15 +156,38 @@ rule table, and executes it. The action space comprises 9 mutually exclusive
 actions: 4 cardinal movements, 4 state changes, and a no-op. Movement to an
 occupied cell fails silently.
 
-\begin{figure}[htbp]
+\begin{figure*}[htbp]
 \centering
 \includegraphics[width=\linewidth]{figures/fig1_snapshot_grid.pdf}
-\caption{Grid snapshots of representative rules from each condition.
+\caption{Grid snapshots of hand-picked highest-MI surviving rules from each
+condition (final-step grid; Miller-Madow estimator).
 Each panel shows the $20 \times 20$ toroidal grid with agents colored by
 internal state. Phase~2 rules produce visibly clustered spatial patterns,
 while Control rules appear disordered.}
 \label{fig:snapshot}
-\end{figure}
+\end{figure*}
+
+\begin{table}[htbp]
+\centering
+\caption{Model and experiment parameters.}
+\label{tab:params}
+\begin{tabular}{lp{0.55\columnwidth}}
+\toprule
+Parameter & Value \\
+\midrule
+Grid topology       & $20 \times 20$ torus (von~Neumann) \\
+Number of agents    & 30 (7.5\% density) \\
+Internal states     & $\{0, 1, 2, 3\}$ \\
+Action space        & 9 (4 moves, 4 state changes, 1 no-op) \\
+Simulation steps    & 200 \\
+Update order        & Random permutation each step \\
+Halt window         & 10 consecutive unchanged steps \\
+MI estimator        & Miller-Madow corrected, base-2 (bits) \\
+Shuffle null $N$    & 200 permutations per rule \\
+Seeds per condition & 5{,}000 (rule seed $i$, sim seed $i$) \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{Observation Phases}
 
@@ -200,6 +234,8 @@ behavioral quality:
 \end{itemize}
 No fitness function, novelty metric, complexity threshold, or behavioral
 criterion is used at any stage.
+Across 5{,}000 rules per condition, survival rates are:
+Random Walk 100\%, Phase~1 71.4\%, Phase~2 74.7\%, Control 44.5\%.
 
 \subsection{Metrics}
 
@@ -228,20 +264,37 @@ To control for pair-count bias---where configurations with few neighbor pairs
 produce inflated MI estimates regardless of state structure---we compute a
 permutation-based shuffle null.  For each rule's final snapshot, we fix
 occupied positions and randomly reassign states among them $N = 200$ times,
-computing $\hat{I}_{\mathrm{MM}}$ for each shuffle.  The mean across shuffles
-is the shuffle-null MI.  The \emph{excess MI},
-$\mathrm{MI}_{\mathrm{excess}} = \hat{I}_{\mathrm{MM}} -
-\overline{I}_{\mathrm{shuffle}}$, isolates genuine spatial coordination from
-estimation artifacts.  In particular, the random walk's high raw MI
+computing $\hat{I}_{\mathrm{MM}}$ for each shuffle.  Specifically, the shuffle
+operator preserves: (i) the set of occupied positions, (ii) the neighbor-pair
+graph structure, and (iii) the marginal state-frequency counts; it permutes
+only the assignment of states to positions.  The mean across shuffles
+is the shuffle-null MI.  The \emph{excess MI} is then:
+\begin{equation}
+  \mathrm{MI}_{\mathrm{excess}} = \max\!\bigl(\hat{I}_{\mathrm{MM}} -
+  \overline{I}_{\mathrm{shuffle}},\; 0\bigr)
+  \label{eq:mi_excess}
+\end{equation}
+which isolates genuine spatial coordination from estimation artifacts.
+All MI values are in bits (base-2 logarithm).
+In particular, the random walk's high raw MI
 ($\approx 0.91$~bits) is entirely attributable to pair-count bias:
 $\mathrm{MI}_{\mathrm{excess}} \approx 0$.
+
+\paragraph{Same-state adjacency fraction.}
+Because agent states are categorical (nominal), traditional Moran's $I$ is
+inappropriate---it treats states as numeric, computing deviations from an
+arithmetic mean.  We therefore report the \emph{same-state adjacency fraction}
+(a join count statistic): the fraction of occupied neighbor pairs sharing the
+same internal state, bounded in $[0, 1]$.  This is the standard spatial
+autocorrelation measure for categorical data.
 
 \paragraph{Moran's I.}
 Spatial autocorrelation is quantified by Moran's $I$~\citep{moran1950notes}
 across occupied cells using torus 4-neighborhood weights: both cells must be occupied for a
 weight of~1.  Values range from $-1$ (dispersed) through $0$ (random) to $+1$
-(clustered).  Moran's~$I$ provides an independent confirmation that elevated
-MI reflects genuine spatial clustering, not a statistical artifact.
+(clustered).  As noted above, Moran's $I$ treats states as numeric and is
+therefore a secondary indicator; the same-state adjacency fraction is the
+primary categorical spatial statistic.
 
 \paragraph{State entropy.}
 Shannon entropy~\citep{cover1991elements} of the internal state distribution
@@ -257,7 +310,7 @@ For each of the four conditions, we generate 5{,}000 random rule tables using
 deterministic seeds (rule seeds 0--4{,}999, simulation seeds 0--4{,}999). Each
 rule table is evaluated on a single 200-step simulation. Surviving rules (those
 not terminated by halt or state-uniformity filters) have their final-step
-metrics recorded.
+metrics recorded; all pairwise statistical comparisons use only surviving rules.
 
 Statistical comparisons use two-sided Mann-Whitney $U$
 tests~\citep{mann1947test} with Holm-Bonferroni correction~\citep{holm1979simple}
@@ -292,7 +345,7 @@ rule-based conditions, a clear monotonic ordering emerges:
 \textbf{Control $<$ Phase~1 $<$ Phase~2}
 \end{center}
 
-\begin{table}[htbp]
+\begin{table*}[htbp]
 \centering
 \caption{Neighbor mutual information and spatial clustering by condition.
 MI values use the Miller-Madow bias-corrected estimator;
@@ -311,7 +364,7 @@ Phase 1     & 20         & 0.019 & 0.000  & $-0.011$ & 71.4\% \\
 Phase 2     & 100        & 0.298 & 0.096  & $-0.020$ & 74.7\% \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
 The control condition, despite having 100-entry tables (equal to Phase~2),
 produces zero median excess MI---demonstrating that table size alone is insufficient.
@@ -322,10 +375,10 @@ driven by access to neighbor state information
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{figures/fig2_mi_distribution.pdf}
-\caption{Neighbor mutual information distributions across rule-based conditions.
-Box plots with scatter strips show the full distribution of final-step MI
-values for surviving rules. The evidence ladder
-Control~$<$~P1~$<$~P2 is clearly visible.}
+\caption{Final-step neighbor MI (Miller-Madow corrected, bits) distributions
+across rule-based conditions.
+Box plots with scatter strips show the full distribution for surviving rules.
+The evidence ladder Control~$<$~P1~$<$~P2 is clearly visible.}
 \label{fig:mi_distribution}
 \end{figure}
 
@@ -417,24 +470,27 @@ Table~\ref{tab:stats} presents Mann-Whitney $U$ test results for the primary
 metric (neighbor MI) across all pairwise comparisons. All comparisons are
 highly significant after Holm-Bonferroni correction.
 
-\begin{table}[htbp]
+\begin{table*}[htbp]
 \centering
-\caption{Pairwise statistical tests for neighbor MI.
-Effect sizes are Cliff's $\delta$ (= rank-biserial $r$).
-Bootstrap 95\% CIs for the median difference (10{,}000 resamples) are the
+\caption{Pairwise statistical tests for $\mathrm{MI}_{\mathrm{excess}}$
+(Eq.~\ref{eq:mi_excess}).
+Cliff's $\delta$ measures effect size (= rank-biserial $r$); bootstrap
+95\% CIs for the median difference (10{,}000 resamples) are the
 primary effect-size statistic; $p$-values (Holm-Bonferroni corrected) are
-secondary.}
+secondary.  Note that Cliff's $\delta$ measures stochastic dominance
+(probability that a random draw from one group exceeds the other), whereas
+the bootstrap CI estimates the location shift of the median difference.}
 \label{tab:stats}
-\begin{tabular}{llccc}
+\begin{tabular}{llccccc}
 \toprule
-Comparison & Direction & Cliff's $\delta$ & Median diff 95\% CI & $p$-value \\
+Comparison & Direction & $n_1$ & $n_2$ & Cliff's $\delta$ & Median diff 95\% CI & $p$-value \\
 \midrule
-P1 vs.\ P2           & P2 $>$ P1      & 0.339 & [0.261, 0.295] & $< 10^{-198}$ \\
-P1 vs.\ Control      & P1 $>$ Ctrl    & 0.270 & [0.012, 0.026] & $< 10^{-158}$ \\
-Control vs.\ P2      & P2 $>$ Ctrl    & 0.482 & [0.281, 0.311] & $\approx 0$ \\
+P1 vs.\ P2      & P2 $>$ P1   & 3570 & 3735 & 0.355 & [0.078, 0.111] & $< 10^{-252}$ \\
+Ctrl vs.\ P1    & P1 $>$ Ctrl & 2225 & 3570 & 0.124 & [$< 0.001$, $< 0.001$] & $< 10^{-50}$ \\
+Ctrl vs.\ P2    & P2 $>$ Ctrl & 2225 & 3735 & 0.423 & [0.078, 0.111] & $\approx 0$ \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
 \subsection{Survival Analysis}
 
@@ -461,6 +517,10 @@ Moran's $I$ reveals that the Control condition exhibits the strongest spatial
 clustering (median $I = 0.124$) despite zero excess MI, while Phase~2's near-zero
 median $I$ ($-0.020$) indicates that its coordination operates at the local
 neighbor level rather than through large-scale spatial clustering.
+We note that Moran's $I$ treats categorical states as numeric, which is
+inappropriate for nominal data; the same-state adjacency fraction
+(Section~3.4) provides the correct categorical spatial statistic and
+confirms local coordination in Phase~2 (see the supplementary material).
 This result is not a consequence of having more rules to choose from, but of
 each rule being able to respond to richer local information.
 
@@ -472,13 +532,26 @@ coordination without collapsing into static patterns. This qualitative
 observation---based on top-performing rules---warrants future investigation
 with quantitative criticality measures.
 
-\paragraph{Remove broken, observe survivors.}
+\paragraph{Viability filtering as minimal selection.}
 Our methodology embodies a minimal philosophy: generate random configurations,
 remove only the physically broken ones, and examine what structure the survivors
-exhibit. This ``negative selection'' approach avoids the evaluation bias
-inherent in fitness-driven search. The surprising finding is that meaningful
+exhibit. We acknowledge that this ``negative selection'' constitutes a minimal
+selection pressure---surviving rules must avoid degenerate dynamics (halt or
+state uniformity)---but it is purely physical, imposing no behavioral or
+performance criterion. The surprising finding is that meaningful
 structure---quantified by mutual information---emerges even under this minimal
 regime, provided the observation channel is sufficiently rich.
+
+\paragraph{Filter-metric independence.}
+A potential concern is that viability filters might inadvertently select for
+high-MI rules, confounding the comparison between observation conditions.
+Point-biserial correlation between survival status and final-step MI yields
+$r = 0.14$ for Phase~2 ($p < 10^{-22}$), $r = 0.14$ for Phase~1, and
+$r = 0.45$ for Control. The modest correlation for Phase~2 indicates that
+while some relationship exists (surviving rules tend to have slightly higher MI),
+the MI advantage of Phase~2 over Phase~1 is not an artifact of differential
+filter selection: both conditions have nearly identical filter-MI correlation
+($r \approx 0.14$), yet Phase~2 achieves substantially higher $\mathrm{MI}_{\mathrm{excess}}$.
 
 \paragraph{Implications for ALife research.}
 These results suggest that objective-free search deserves more attention as a
@@ -509,7 +582,7 @@ Several limitations constrain the generalizability of our findings:
         the model is deliberately minimal. Scaling to larger state spaces may
         reveal qualitatively different dynamics.
   \item \textbf{Density fixed}: The main experiments use 30 agents on a
-        400-cell grid (7.5\% density). Appendix~\ref{app:density_sweep}
+        400-cell grid (7.5\% density). The supplementary material
         reports a systematic density sweep across 12 conditions
         (density range 0.017--0.400), confirming that the Phase~2 MI
         advantage holds across all tested densities.
@@ -517,10 +590,11 @@ Several limitations constrain the generalizability of our findings:
         permutation each step, creating implicit temporal correlations between
         early and late updates within the same step. Synchronous update
         schemes may produce different dynamics.
-  \item \textbf{Single simulation per rule}: Each rule table is evaluated
-        with a single initial configuration (rule seed $i$ paired with
-        simulation seed $i$). Stochastic variation across different initial
-        configurations for the same rule is not explored.
+  \item \textbf{Single simulation per rule (main experiment)}: Each rule table
+        is evaluated with a single initial configuration in the main experiment.
+        The supplementary material provides multi-seed robustness analysis
+        for the top 50 Phase~2 rules, confirming that high MI is a property
+        of the rule table, not a seed-specific accident.
 \end{itemize}
 
 %% =========================================================================
@@ -535,7 +609,7 @@ The evidence ladder from step-clock control through density-only to
 state-profile observation demonstrates a monotonic relationship between
 observation content and emergent coordination, confirmed by a
 bias-corrected MI estimator across all tested density levels
-(Appendix~\ref{app:density_sweep}).
+(see the supplementary material).
 
 Future work should investigate directional information flow using transfer
 entropy, extend to larger grids and state spaces, and explore multi-generation
@@ -543,83 +617,15 @@ rule evolution under the same objective-free regime. The broader implication
 is that the ``remove broken, observe survivors'' philosophy can serve as a
 productive complement to fitness-driven search in artificial life.
 
-%% =========================================================================
-%% APPENDIX
-%% =========================================================================
-\appendix
-\section{Density Sweep Robustness}
-\label{app:density_sweep}
-
-The main experiments use a fixed density of 7.5\% (30 agents on a
-$20 \times 20$ grid). To assess robustness across density levels, we
-evaluated both Phase~1 and Phase~2 across 12 density conditions: 3 grid
-sizes ($15 \times 15$, $20 \times 20$, $30 \times 30$) $\times$ 4 agent
-counts (15, 30, 60, 90), yielding densities from 0.017 to 0.400.
-Each condition was evaluated with 600 rules (100 rules $\times$ 6 seed
-batches), totaling 14{,}400 rule evaluations, all using the Miller-Madow
-bias-corrected MI estimator.
-
-\begin{table}[htbp]
-\centering
-\caption{Density sweep results across 12 conditions. Phase~2 achieves
-nonzero median MI in 8 of 12 conditions, including all conditions with
-$\geq 60$ agents, while Phase~1 remains at zero across all densities tested.}
-\label{tab:density_sweep}
-\begin{tabular}{rllcccc}
-\toprule
-Density & Grid & Agents & \multicolumn{2}{c}{Median MI (bits)} & \multicolumn{2}{c}{Survival (\%)} \\
-\cmidrule(lr){4-5} \cmidrule(lr){6-7}
- & & & P1 & P2 & P1 & P2 \\
-\midrule
-0.017 & $30 \times 30$ & 15 & 0.000 & 0.000 & 86.7 & 86.7 \\
-0.033 & $30 \times 30$ & 30 & 0.000 & 0.000 & 83.3 & 85.8 \\
-0.037 & $20 \times 20$ & 15 & 0.000 & 0.000 & 80.8 & 81.8 \\
-0.067 & $15 \times 15$ & 15 & 0.000 & 0.000 & 68.7 & 76.0 \\
-0.067 & $30 \times 30$ & 60 & 0.000 & 0.167 & 70.5 & 76.3 \\
-0.075 & $20 \times 20$ & 30 & 0.000 & 0.106 & 70.2 & 72.5 \\
-0.100 & $30 \times 30$ & 90 & 0.000 & 0.217 & 67.0 & 74.2 \\
-0.133 & $15 \times 15$ & 30 & 0.000 & 0.129 & 62.2 & 64.8 \\
-0.150 & $20 \times 20$ & 60 & 0.000 & 0.180 & 63.0 & 69.7 \\
-0.225 & $20 \times 20$ & 90 & 0.000 & 0.153 & 64.0 & 76.7 \\
-0.267 & $15 \times 15$ & 60 & 0.000 & 0.121 & 63.5 & 72.7 \\
-0.400 & $15 \times 15$ & 90 & 0.000 & 0.088 & 68.0 & 83.7 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Table~\ref{tab:density_sweep} and Figures~\ref{fig:mi_density}
-and~\ref{fig:surv_density} present the results. Phase~2 achieves nonzero
-median MI in 8 of 12 conditions, including all conditions with $\geq 60$
-agents, peaking near $d = 0.100$ (MI = 0.217 bits at $30 \times 30$, 90
-agents) before declining at higher densities. Phase~1 remains at zero
-median MI across all 12 conditions, confirming that the Phase~2 advantage
-is not an artifact of the specific grid configuration used in the main
-experiments.
-
-Phase~2 also consistently achieves higher survival rates than Phase~1, with
-the gap widening at higher densities (e.g., 76.7\% vs.\ 64.0\% at $d =
-0.225$; 83.7\% vs.\ 68.0\% at $d = 0.400$).
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.85\linewidth]{figures/figA1_mi_vs_density.pdf}
-\caption{Median neighbor MI vs.\ agent density for Phase~1 and Phase~2.
-Phase~2 MI peaks at medium densities and declines at higher densities, while
-Phase~1 remains at zero throughout.}
-\label{fig:mi_density}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.85\linewidth]{figures/figA2_survival_vs_density.pdf}
-\caption{Survival rate vs.\ agent density. Phase~2 consistently achieves
-higher survival than Phase~1, with the gap widening at higher densities.}
-\label{fig:surv_density}
-\end{figure}
+\paragraph{Supplementary Material.}
+Density sweep analysis, multi-seed robustness results, and algorithmic
+pseudocode are available as supplementary material with the code repository.
 
 %% =========================================================================
 %% BIBLIOGRAPHY
 %% =========================================================================
+\footnotesize
+\bibliographystyle{apalike}
 \bibliography{references}
 
 \end{document}

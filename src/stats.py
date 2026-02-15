@@ -15,8 +15,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
-from scipy.stats import chi2_contingency, mannwhitneyu
+from scipy.stats import chi2_contingency, mannwhitneyu, pointbiserialr
 
 from src.run_search import PHASE_SUMMARY_METRIC_NAMES
 
@@ -89,6 +90,8 @@ def phase_comparison_tests(
     results: dict[str, dict] = {}
 
     for metric in metrics_to_test:
+        if metric not in phase1_metrics.column_names or metric not in phase2_metrics.column_names:
+            continue
         col1 = phase1_metrics.column(metric)
         col2 = phase2_metrics.column(metric)
 
@@ -247,6 +250,72 @@ def pairwise_survival_comparison(rules_dir_a: Path, rules_dir_b: Path) -> dict:
         "a_total": a_total,
         "b_survived": b_survived,
         "b_total": b_total,
+    }
+
+
+def filter_metric_independence(metrics_path: Path, rules_dir: Path) -> dict:
+    """Compute point-biserial correlation between survival and final-step MI.
+
+    Tests whether viability filters inadvertently select for high-MI rules.
+    Returns correlation, p-value, and per-group medians.
+    """
+    # Load survival status from rule JSONs
+    survival: dict[str, bool] = {}
+    for path in sorted(rules_dir.glob("*.json")):
+        data = json.loads(path.read_text())
+        survival[data["rule_id"]] = bool(data.get("survived", False))
+
+    # Load final-step MI values
+    final_metrics = load_final_step_metrics(metrics_path)
+    rule_id_col = final_metrics.column("rule_id")
+    mi_col = final_metrics.column("neighbor_mutual_information")
+
+    # Build survival column aligned to the metrics table
+    surv_list = [survival.get(rid) for rid in rule_id_col.to_pylist()]
+    surv_col = pa.array(surv_list, type=pa.bool_())
+
+    # Filter on Arrow: keep rows where MI is valid and survival is known
+    mi_valid = pc.is_valid(mi_col)
+    mi_not_nan = pc.is_finite(mi_col.cast(pa.float64()))
+    surv_known = pc.is_valid(surv_col)
+    mask = pc.and_(pc.and_(mi_valid, mi_not_nan), surv_known)
+
+    filtered_mi = pc.filter(mi_col, mask)
+    filtered_surv = pc.filter(surv_col, mask)
+
+    # Split into survived / terminated groups on Arrow
+    survived_mask = filtered_surv
+    terminated_mask = pc.invert(filtered_surv)
+    survived_mi_arr = pc.filter(filtered_mi, survived_mask)
+    terminated_mi_arr = pc.filter(filtered_mi, terminated_mask)
+
+    n_survived = len(survived_mi_arr)
+    n_terminated = len(terminated_mi_arr)
+
+    if (n_survived + n_terminated) < 3 or n_survived == 0 or n_terminated == 0:
+        return {
+            "correlation": float("nan"),
+            "p_value": float("nan"),
+            "survived_median_mi": float("nan"),
+            "terminated_median_mi": float("nan"),
+            "n_survived": n_survived,
+            "n_terminated": n_terminated,
+        }
+
+    # Convert to Python only after Arrow filtering
+    surv_flags = [1 if s else 0 for s in filtered_surv.to_pylist()]
+    mi_list = filtered_mi.to_pylist()
+    survived_mi = survived_mi_arr.to_pylist()
+    terminated_mi = terminated_mi_arr.to_pylist()
+
+    corr, pval = pointbiserialr(surv_flags, mi_list)
+    return {
+        "correlation": float(corr),
+        "p_value": float(pval),
+        "survived_median_mi": float(statistics.median(survived_mi)),
+        "terminated_median_mi": float(statistics.median(terminated_mi)),
+        "n_survived": n_survived,
+        "n_terminated": n_terminated,
     }
 
 

@@ -1,0 +1,91 @@
+The 2026 Artificial Life Conference
+
+Call for Papers
+Key Submission Deadlines:
+
+Special Session Proposals: 20 February 2026
+Workshop & Tutorial Proposals: 20 February 2026
+Full Papers & Summaries: Submission 30 March 2026
+Full Papers & Summaries: Notification 7 June 2026
+Camera-Ready Papers: 21 June 2026
+Late-Breaking Abstracts Submission deadline: 20 July 2026
+Late-Breaking Abstracts Notification: 27 July 2026
+Template
+Dear colleagues,
+We are excited to invite you to submit your work to the annual Conference on Artificial Life (ALIFE 2026), taking place in Waterloo, Canada, and online from 17-21 August 2026.
+
+Artificial life research focuses on understanding, replicating, and extending the fundamental principles of life. Much of this research involves creating artificial systems that exhibit life-like behaviors.
+
+This year’s conference theme, “Living and Lifelike Complex Adaptive Systems“, encourages participants to explore simulation and synthesis of life or life as it could be in media or elsewhere in the universe.
+
+Please note that the submission types differ significantly from many previous years. See below for full details on the different submission types.
+
+REMINDER: Papers accepted into the Artificial Life Journal (MIT Press) are automatically accepted into the ALIFE 2026 program as oral presentations. 
+
+Registration and presentation (in-person or online) is required for all accepted full papers to be included in the proceedings.
+
+Conference Topics:
+
+We encourage submissions across all areas of Artificial Life research, including (but not limited to):
+
+Embodied Intelligence, Perception-Action, and Morphological Computation
+Synthetic Biology, Protocells, and Wet Artificial Life
+Astrobiology, Exobiology, and the Origins and Detection of Life
+Predictive Methods for Complex Adaptive Systems and Life-like Systems
+Self-reproduction, Self-Repair, Self-* Systems
+Evo-Devo-Eco in Biology and More General Media
+Constructive Dynamical Systems and Complexity
+Information-Theoretic Methods & Empowerment in Lifelike Systems
+Non-Traditional Computational Media in Artificial Life
+Artificial Chemistry
+Multiscale Emergence, Robustness and Plasticity
+Phenotypic Plasticity and Adaptability in Scalable, Robust Growing Systems
+Cellular Automata and Dynamic Networks
+Co-evolution, Symbiogenesis, Major Evolutionary Transitions
+Applications in Nanotechnology, Compilable Matter, or Medicine
+Simulation and Visualization Tools for Artificial Life
+Genetic Regulatory Systems, Growth & Differentiated Multicellularity
+Synchronization and Biological Clocks
+Self-organization, Swarms, Stigmergy (including applications such as drones)
+Game Theory, Interaction Games, and Generalized Biology
+Emergence of Signaling, Interaction, Cooperation, Communication, Language, Social Organization, and Culture
+Minimal, Behaviour-based, Enactive, Evolutionary, Ontogenic, Affective, Bio-inspired, and/or Social Robotics
+Cognitive Architectures
+Temporal Grounding, Interaction and Experience
+Autopoiesis, Self/Other, Reflective Agents, and Immune Systems
+Circular Bioeconomy, Ecology & Sustainability
+Interactive, Social and Narrative Intelligence
+Artificial Life for Systems and Artifact Design
+Artificial Life in Education; Artificial Life-based Art and Theatre,
+Ethics, Existential Risks, and Philosophy of Artificial Life
+‍Full Papers:
+
+Full Papers are 3 to 8 pages long (not including references or acknowledgements) and should report on new, unpublished work. Full Papers will be peer reviewed as self-contained work. Accepted papers will be published by MIT press as open access conference proceedings. Accepted submissions will be assigned an oral or poster presentation.
+
+Summaries:
+
+Summaries summarize a previously published work. These are limited to a maximum of 2 pages (not including references or acknowledgements). Summaries must report on work that has been peer reviewed and published already, e.g. in another conference or a journal. If the work has only been published as a preprint it should be submitted as a full paper. Summaries will not be included in the proceedings. They will be made publicly available but will not receive DOIs. Summaries will be peer-review for quality and relevance to the conference. Accepted submissions will be assigned an oral or poster presentation, but full papers will be given priority for oral presentations.
+
+Late Breaking Abstracts:
+
+Late Breaking Abstracts are limited to a maximum of 2-pages (not including references). They can report on new ideas and work in progress. Late Breaking Abstracts will be reviewed for relevance to the conference and quality. Late breaking abstracts will not be included in the proceedings. Accepted Late Breaking Abstracts will be presented as posters during the conference.
+
+
+REMINDER: Recently published regular articles in the Artificial Life Journal (MIT Press) are automatically accepted into the ALIFE 2026 program as oral presentations. Relevant authors will receive a specific invitation. Regular registration is still required for in-person attendance, however online participants presenting these articles can attend the session in which they present them for free.
+‍
+
+Overleaf, LaTeX and Word templates will be made available for download at:
+
+Overleaf, LaTeX, MS-Word
+
+How to Submit:
+
+Submit via the conference website at https://ssl.linklings.net/conferences/ALIFE/ once submissions open.
+
+Please contact program2026@alife.org with any queries regarding the submission process.
+
+We look forward to your submissions!
+
+Sincerely,
+
+The ALIFE 2026 Organizing Committee

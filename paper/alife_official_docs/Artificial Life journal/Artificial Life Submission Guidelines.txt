@@ -1,0 +1,123 @@
+Artificial Life Submission Guidelines
+Scope
+Artificial Life is intended to be the primary vehicle for the dissemination of original scientific and engineering research involving the synthesis of life and life-like phenomena in wetware, hardware, and software, and the application of such techniques toward the enhancement of our theoretical understanding of life and life-like phenomena. It is also intended to serve as a forum for the discussion and evaluation of the many technological, philosophical, social, and ethical issues involved in our attempts to synthesize vital phenomena artificially.
+Article types
+Contributions will be accepted in the following categories: 
+
+Article—A manuscript reporting original research, typically of 6,000 to 12,000 words.
+
+Review—A major overview of a domain of intellectual inquiry relevant to the field of artificial life, typically of more than 12,000 words.
+
+Review articles are generally solicited by the editors, but proposals for reviews are accepted for consideration, in which case a brief summary and outline consisting of no more than 10 pages should be sent first.
+
+Meeting Report—Objective summary of a conference, workshop, or other intellectual gathering of interest to the artificial life community, typically under 2,000 words
+
+Letter—A short communication detailing original research results, typically of less than 2,000 words
+
+Fast Track Letter—A short communication, typically of about 2,000 words, describing especially timely or important original research results or perspectives. Editorial decisions are communicated to authors typically within a matter of weeks. 
+
+Please contact the editorial team if you are interested in this route for publication; the team is ready to assist and advise.  Submissions not deemed suitable for Fast Track may be suitable for the regular Letter/Article route.
+
+Supplementary Material
+During review—Supplementary material deemed necessary for review (data, code, videos, methods, proofs, etc) must be uploaded at the same time as the main article, or be referenced through a URL in the article. Access to this URL must not facilitate or potentially undermine reviewers’ anonymity.
+On publication—Each item of supplementary material uploaded as part of the prior review process must either
+be made available via an online repository, and be referenced via a publicly accessible URL in the article.
+or,
+be compiled and provided into a single PDF file, to be uploaded with the final paper on the journal’s website. This PDF file must include internal text specifying/including:
+Supplementary Material
+<Paper title>
+<Paper authors>
+<Paper authors’ affiliations and contact details>
+All supp. text and figures must be included in the remainder of the PDF in their desired format as they will be uploaded “as is”, and will not be typeset further by MIT Press staff.
+Also see the Data and code policy.
+Data and code policy
+It is the responsibility of all authors submitting research for publication to ensure that all data contributing to the findings of that research are properly cited in the article itself and that the data is made publicly available where possible. Therefore, submissions must conform to the MIT Press Research Data Policy.
+
+Initial Submissions
+Manuscripts (PDF) are to be submitted electronically using the online submission system at https://mc.manuscriptcentral.com/artificiallife. Submissions must include a cover letter that:
+
+explains how the article fits in the scope of Artificial Life
+
+if Fast Track, explain why this route is relevant.
+
+By submitting a manuscript, the authors are warranting that the manuscript is substantially unique and not currently published or under review elsewhere.
+
+Revised Submissions
+Manuscripts may need to be revised in light of reviewers’ comments. Revised versions are submitted through the online system, and must include:
+
+A "clean copy” of the revised manuscript
+
+A "highlighted copy”, clearly showing all changes from the previous version (e.g. set the font-colour for newly added text to blue, strike-through removed text etc.)
+
+A “reviewer response” document describing, point by point, how each review comment has been addressed
+
+Accepted Submissions
+Upon acceptance for publication in Artificial Life, the accepted version is submitted through the online system, in the following format:
+
+Text
+The submission format is LaTeX or Microsoft Word.
+The cover page should include:
+
+title
+
+each author’s details:
+
+name
+
+affiliation and address
+
+e-mail address (indicate the corresponding author)
+
+Twitter handle (optional; for use if the journal tweets about the article)
+
+abstract
+
+5–6 keywords
+
+The main content should start on the second page.
+
+The entire manuscript, including abstract, references, and figure captions, should be single column, double-spaced. An Overleaf LaTeX template is available for use.
+
+Final submissions must include (where NAME is the family name of the corresponding author, and NN is the figure number):  
+the entire manuscript as PDF: NAME.pdf 
+
+a zip file containing:
+
+NAME.tex  or NAME.docx
+
+each figure also in a separate file:  NAME.figNN.*
+
+(LaTeX only) bibliography file:  NAME.bib
+
+completed Publication Agreement form
+
+completed copyright release forms (where applicable)
+
+“feature figure” file: NAME.featurefig.* (optional; for use if the journal tweets about the article). Details on acceptable feature figures are provided below.
+
+
+Figures
+Format: Figures should be provided in postscript or vector-based PDF, .tiff, .eps or other vector-based image format. Line art, graphs and diagrams should be in vector formats exported directly from plotting software and diagramming tools. Screenshots and other rendered raster graphics must be a minimum of 600 dpi, and halftones a minimum of 360 dpi. Color figures should be in CMYK (four color) or RGB format.
+
+Permissions: If your article contains third party copyrighted material (images, illustrations, etc.) that you do not own copyright to, you must obtain and submit a copy of the required copyright release forms. You must include the proper copyright notice as required by the original copyright holder in the text.
+
+If a figure or illustration is redrawn from copyrighted material, it must be substantially different from the original before it removes the need for a copyright release.
+
+Visual Abstracts and Feature figures
+These are optional items. Design and submission instructions can be found here.
+
+
+Citations and bibliography
+Artificial Life follows the American Psychological Association (APAv7) style for citations and references. 
+
+Citations in the body of the text have the format (Name, Year), or Name (Year), as appropriate grammatically.   The reference list is in alphabetical order by first author.
+LaTeX: an appropriate bib style file for APA v7 is available at  https://ctan.org/pkg/apa7
+
+Microsoft Word: Word 2016 and later currently support APA v6, available under References>Citations & Bibliography>Style>APA.  This format is sufficiently similar to v7 for submission purposes. 
+Open Access Option
+Upon acceptance of their article for publication in Artificial Life, authors have the option to publish as open access (OA), making it freely accessible to the public worldwide. For more information on this option, and the associated fee, see the Artificial Life Open Access Program.
+
+Contact details
+Questions and comments should be sent to:
+Editor, Artificial Life
+E-mail: editor@alife.org

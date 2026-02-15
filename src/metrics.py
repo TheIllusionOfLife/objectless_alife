@@ -53,6 +53,40 @@ def serialize_snapshot(
     return bytes(data)
 
 
+def same_state_adjacency_fraction(
+    snapshot: tuple[tuple[int, int, int, int], ...], grid_width: int, grid_height: int
+) -> float:
+    """Fraction of occupied neighbor pairs sharing the same state.
+
+    Returns a value in [0, 1].  Returns NaN when no occupied neighbor pairs
+    exist (fewer than 2 occupied cells, or none adjacent).
+    """
+    occupied = {(x, y): state for _, x, y, state in snapshot}
+    same = 0
+    total = 0
+    seen_edges: set[tuple[tuple[int, int], tuple[int, int]]] = set()
+    for (x, y), state in occupied.items():
+        neighbors = (
+            ((x + 1) % grid_width, y),
+            (x, (y + 1) % grid_height),
+        )
+        for nx, ny in neighbors:
+            if (nx, ny) not in occupied:
+                continue
+            a = (x, y)
+            b = (nx, ny)
+            edge = (a, b) if a < b else (b, a)
+            if edge in seen_edges:
+                continue
+            seen_edges.add(edge)
+            total += 1
+            if state == occupied[(nx, ny)]:
+                same += 1
+    if total == 0:
+        return float("nan")
+    return same / total
+
+
 def morans_i_occupied(
     snapshot: tuple[tuple[int, int, int, int], ...], grid_width: int, grid_height: int
 ) -> float:

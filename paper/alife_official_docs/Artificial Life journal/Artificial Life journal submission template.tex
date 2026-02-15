@@ -1,0 +1,146 @@
+%%          !!! IMPORTANT !!!        %%
+%%          MUST COMPILE WITH        %%
+%%         XELATEX OR LUALATEX       %%
+% In Overleaf: Menu -> Settings -> Compiler -> XeLaTeX/LuaLaTeX
+
+% Created by Acacia Ackles, 2021-12-10, v1.0
+% updated by Susan Stepney, 2022-01-12, v1.1
+%
+% Free to share and redistribute with attribution (CC BY)
+
+% This is a template for submission of accepted for publication by 
+%  the journal Artificial Life ("ALife"). 
+%  Template specifications are provided in 
+%  artificial-life.cls
+
+% LETTERS -- <= 2000 words
+% ARTICLES -- 6000-12000 words
+% FAST TRACK -- ~ 2000 words
+% REVIEWS -- >= 12000 words
+% REPORTS -- <= 2000 words
+
+% This template uses the font Atkinson Hyperlegibile, 
+%  a font designed to provide greater accessibility 
+%  (see https://brailleinstitute.org/freefont)
+%  to low-vision readers. Please do NOT include 
+%  the .ttf files in your final journal submission.
+
+\documentclass{artificial-life}
+
+%%%%%%%%%%%%%%%%% BIBLIOGRAPHY %%%%%%%%%%%%%%%%%%%%
+%  Artificial Life requires APA style citations
+% natbib option supports \citep, \citet
+\usepackage[style=apa,natbib=true]{biblatex}
+\addbibresource{NAME.bib}
+
+%%%%%%%%%%%%%%%%% TITLE %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\title{Article title}
+
+%%%%%%%%%%%%%%%% AUTHORS %%%%%%%%%%%%%%%%%%%%%%%%%%%
+% For each author, associate with affiliations below.
+%   Comma-separate authors.
+%   Twitter handle is optional 
+%   (for journal's promotional purposes).
+\auth{
+    First Author \affil{1,2} \twitter{f\_author}, % Note the escape for an underscore
+    Second Author \affil{1},
+    Last Author \affil{2,3} \twitter{aliferocks}
+}
+
+% Specify the corresponding author by name and email
+\corresponding{Second Author}{email@myemail.mail}
+
+%%%%%%%%%%%%%%% AFFILIATIONS %%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Specify each new affiliation with \item
+% The template automatically converts these to a numbered list
+\affiliations{
+    \item University of Science, 12 Road St, City, Province, Country
+    \item Company Incorporated, 100 Street Rd, City, Country 
+    \item My College, 4028 College Circle, City, State, Country
+}
+
+%%%%%%%%%%%%%%% ABSTRACT %%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Type your abstract below
+\abs{
+This is a \LaTeX\ template for the submission of articles accepted for publication in the MIT Press journal, \textit{Artificial Life}.
+The article abstract should succinctly and clearly explain what research was conducted, why it is important or valuable, how it was conducted, what were the major findings, and what is the outcome (or who are the potential beneficiaries) of the research. The abstract should be self-contained and avoid citation of external literature. The following sections of this template cover figures, equations, citations, and the data and code policy. 
+}
+
+%%%%%%%%%%%%%% KEYWORDS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Please provide 5 to 6 keywords, comma-separated
+\keywords{one, two, three, four, five, six}
+
+\begin{document}
+
+% Don't Touch ! %%%%%% 
+\coverpage           % 
+\linenumbers         % 
+\doublespacing       % 
+%%%%%%%%%%%%%%%%%%%%%% 
+
+
+
+%%% ALL TEXT OF ARTICLE BELOW THIS LINE %%%
+%-----------------------------------------%
+
+
+\section{Introduction}
+
+This is a \LaTeX\ template for the submission of articles accepted for publication in the MIT Press journal \textit{Artificial Life}.
+See the full submission guidelines at
+\url{https://direct.mit.edu/artl/pages/submission-guidelines}
+
+\section{Figures}
+
+Figures and their captions may be positioned in the appropriate place in the accepted submission.
+All figures should be referenced in the text (see Figure~\ref{fig:isal_logo}).
+
+\begin{figure}[tp] % Example Figure
+    \centering
+    \includegraphics[width=0.4\textwidth]{NAME.fig1.pdf}
+    \caption{The logo of ISAL, the International Society for Artificial Life. Figure captions should be descriptive of the image content where possible, rather than relying on the article body text for informing the reader of their meaning or key features.}
+    \label{fig:isal_logo}
+\end{figure}
+
+\paragraph{Format:} Figure files should be provided in postscript or vector-based PDF, .tiff, .eps or other high-resolution image format.  Line art must be a minimum of 600 dpi, and halftones a minimum of 360 dpi. Color figures should be in CMYK (four color) or RGB format.
+
+\paragraph{Permissions:} If your article contains third party copyrighted material (images, illustrations, etc.) that you do not own copyright to, you must obtain and submit a copy of the required copyright release forms. You must include the proper copyright notice as required by the original copyright holder in the text.
+
+If a figure or illustration is redrawn from copyrighted material, it must be substantially different from the original before it removes the need for a copyright release.
+
+
+
+\section{Equations}
+
+All equations should be numbered:
+\begin{equation}\label{eqn:example}
+    x^2 + y^2 = \frac{1}{2} % Example Equation
+\end{equation}
+
+Numbering enables any equation to be referenced later in the text (see Equation~\ref{eqn:example}),
+and by other authors.
+
+
+\section{Citations and bibliography}
+
+\textit{Artificial Life} follows the American Psychological Association (APAv7) style for citations and references. 
+In APAv7, the reference list is in alphabetical order by first author.
+An appropriate bib style file for APA v7 is available at  \url{https://ctan.org/pkg/apa7}
+
+Citations in the body of the text should use \verb|\citep{}| for the format (Name, Year), or \verb|\citet{}| for the format Name (Year), as appropriate grammatically. 
+For grammatical example: some people use parrot metaphors
+\citep{bender_dangers_2021}, but 
+\citet{darwin_origin_1859} is more interested in finches.
+
+
+
+\section{Data and code policy}
+
+It is the responsibility of all authors submitting research for publication to ensure that all data contributing to the findings are properly cited in the article itself and that the data is made publicly available where possible.  Therefore, submissions must conform to the \href{https://direct.mit.edu/journals/pages/authors#data}{MIT Press Research Data Policy}.
+
+
+
+
+\printbibliography
+
+\end{document}

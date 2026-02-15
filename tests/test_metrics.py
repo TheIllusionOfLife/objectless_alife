@@ -13,6 +13,7 @@ from src.metrics import (
     normalized_hamming_distance,
     phase_transition_max_delta,
     quasi_periodicity_peak_count,
+    same_state_adjacency_fraction,
     serialize_snapshot,
     shuffle_null_mi,
     state_entropy,
@@ -188,6 +189,63 @@ def test_shuffle_null_mi_zero_when_no_pairs() -> None:
     )
     result = shuffle_null_mi(snapshot, 10, 10, n_shuffles=20, rng=random.Random(1))
     assert result == 0.0
+
+
+def test_same_state_adjacency_fraction_all_same_state() -> None:
+    """All occupied cells share the same state → fraction = 1.0."""
+    snapshot = (
+        (0, 0, 0, 1),
+        (1, 1, 0, 1),
+        (2, 0, 1, 1),
+        (3, 1, 1, 1),
+    )
+    result = same_state_adjacency_fraction(snapshot, grid_width=5, grid_height=5)
+    assert result == pytest.approx(1.0)
+
+
+def test_same_state_adjacency_fraction_alternating_states() -> None:
+    """Checkerboard pattern: no adjacent pair shares the same state → fraction = 0.0."""
+    # 2x2 grid fully occupied, checkerboard with 2 states on a torus
+    snapshot = (
+        (0, 0, 0, 0),
+        (1, 1, 0, 1),
+        (2, 0, 1, 1),
+        (3, 1, 1, 0),
+    )
+    result = same_state_adjacency_fraction(snapshot, grid_width=2, grid_height=2)
+    assert result == pytest.approx(0.0)
+
+
+def test_same_state_adjacency_fraction_known_small_grid() -> None:
+    """Known small grid with specific fraction."""
+    # 3 agents on a 5x5 grid:
+    # (0,0)=1, (1,0)=1, (2,0)=2
+    # Pairs: (0,0)-(1,0) same=1, (1,0)-(2,0) diff=0
+    # Fraction = 1/2 = 0.5
+    snapshot = (
+        (0, 0, 0, 1),
+        (1, 1, 0, 1),
+        (2, 2, 0, 2),
+    )
+    result = same_state_adjacency_fraction(snapshot, grid_width=5, grid_height=5)
+    assert result == pytest.approx(0.5)
+
+
+def test_same_state_adjacency_fraction_no_pairs() -> None:
+    """No adjacent occupied pairs → NaN."""
+    snapshot = (
+        (0, 0, 0, 0),
+        (1, 4, 4, 1),
+    )
+    result = same_state_adjacency_fraction(snapshot, grid_width=10, grid_height=10)
+    assert result != result  # NaN
+
+
+def test_same_state_adjacency_fraction_single_agent() -> None:
+    """Single agent → no pairs → NaN."""
+    snapshot = ((0, 0, 0, 1),)
+    result = same_state_adjacency_fraction(snapshot, grid_width=5, grid_height=5)
+    assert result != result  # NaN
 
 
 def test_block_ncd_is_bounded() -> None:

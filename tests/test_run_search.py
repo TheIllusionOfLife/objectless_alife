@@ -12,6 +12,7 @@ from src.run_search import (
     PHASE_SUMMARY_METRIC_NAMES,
     DensitySweepConfig,
     ExperimentConfig,
+    MultiSeedConfig,
     SearchConfig,
     _entropy_from_action_counts,
     _parse_grid_sizes,
@@ -20,6 +21,8 @@ from src.run_search import (
     run_batch_search,
     run_density_sweep,
     run_experiment,
+    run_multi_seed_robustness,
+    select_top_rules_by_excess_mi,
 )
 from src.world import WorldConfig
 
@@ -646,6 +649,118 @@ def test_mi_shuffle_null_column_in_output_parquet(tmp_path: Path) -> None:
     # Should be a constant value (backfilled to all steps)
     values = metrics.column("mi_shuffle_null").to_pylist()
     assert all(v == values[0] for v in values)
+
+
+def test_mi_excess_in_phase_summary_metric_names() -> None:
+    """mi_excess is included in PHASE_SUMMARY_METRIC_NAMES."""
+    assert "mi_excess" in PHASE_SUMMARY_METRIC_NAMES
+
+
+def test_mi_excess_columns_in_phase_summary(tmp_path: Path) -> None:
+    """Phase summary parquet contains mi_excess_mean/p25/p50/p75 columns."""
+    run_experiment(
+        ExperimentConfig(
+            phases=(ObservationPhase.PHASE1_DENSITY, ObservationPhase.PHASE2_PROFILE),
+            n_rules=2,
+            n_seed_batches=1,
+            out_dir=tmp_path,
+            steps=6,
+        )
+    )
+    summary = pq.read_table(tmp_path / "logs" / "phase_summary.parquet")
+    for suffix in ("mean", "p25", "p50", "p75"):
+        assert f"mi_excess_{suffix}" in summary.column_names
+
+
+def test_mi_excess_columns_in_density_phase_summary(tmp_path: Path) -> None:
+    """Density phase summary parquet contains mi_excess columns."""
+    run_density_sweep(
+        DensitySweepConfig(
+            grid_sizes=((5, 5),),
+            agent_counts=(3,),
+            n_rules=2,
+            n_seed_batches=1,
+            out_dir=tmp_path,
+            steps=6,
+            halt_window=3,
+        )
+    )
+    summary = pq.read_table(tmp_path / "logs" / "density_phase_summary.parquet")
+    for suffix in ("mean", "p25", "p50", "p75"):
+        assert f"mi_excess_{suffix}" in summary.column_names
+
+
+def test_mi_excess_is_nonnegative(tmp_path: Path) -> None:
+    """mi_excess values in phase summary are always >= 0."""
+    run_experiment(
+        ExperimentConfig(
+            phases=(ObservationPhase.PHASE1_DENSITY, ObservationPhase.PHASE2_PROFILE),
+            n_rules=3,
+            n_seed_batches=1,
+            out_dir=tmp_path,
+            steps=8,
+        )
+    )
+    summary = pq.read_table(tmp_path / "logs" / "phase_summary.parquet").to_pylist()
+    for row in summary:
+        for suffix in ("mean", "p25", "p50", "p75"):
+            val = row[f"mi_excess_{suffix}"]
+            if val is not None:
+                assert val >= 0.0, f"mi_excess_{suffix} = {val} < 0"
+
+
+def test_select_top_rules_by_excess_mi(tmp_path: Path) -> None:
+    """select_top_rules_by_excess_mi returns top-K rule seeds by MI_excess."""
+    # Run a small experiment to generate data
+    run_experiment(
+        ExperimentConfig(
+            phases=(ObservationPhase.PHASE1_DENSITY, ObservationPhase.PHASE2_PROFILE),
+            n_rules=5,
+            n_seed_batches=1,
+            out_dir=tmp_path,
+            steps=10,
+        )
+    )
+    metrics_path = tmp_path / "phase_2" / "logs" / "metrics_summary.parquet"
+    rules_dir = tmp_path / "phase_2" / "rules"
+    top = select_top_rules_by_excess_mi(metrics_path, rules_dir, top_k=3)
+    assert len(top) <= 3
+    assert all(isinstance(seed, int) for seed in top)
+
+
+def test_multi_seed_robustness_output_schema(tmp_path: Path) -> None:
+    """run_multi_seed_robustness produces parquet with expected columns."""
+    # First generate source data
+    run_experiment(
+        ExperimentConfig(
+            phases=(ObservationPhase.PHASE1_DENSITY, ObservationPhase.PHASE2_PROFILE),
+            n_rules=3,
+            n_seed_batches=1,
+            out_dir=tmp_path / "source",
+            steps=8,
+        )
+    )
+    config = MultiSeedConfig(
+        rule_seeds=(0, 1),
+        n_sim_seeds=3,
+        out_dir=tmp_path / "multi_seed",
+        steps=8,
+        halt_window=3,
+    )
+    run_multi_seed_robustness(config)
+    output_path = tmp_path / "multi_seed" / "logs" / "multi_seed_results.parquet"
+    assert output_path.exists()
+    table = pq.read_table(output_path)
+    expected_cols = {
+        "rule_seed",
+        "sim_seed",
+        "survived",
+        "neighbor_mutual_information",
+        "mi_shuffle_null",
+        "mi_excess",
+    }
+    assert expected_cols.issubset(table.column_names)
+    assert table.num_rows == 2 * 3  # 2 rules x 3 seeds
 
 
 def test_run_search_main_rejects_density_sweep_and_experiment_together(tmp_path: Path) -> None:
