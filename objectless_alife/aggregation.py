@@ -648,8 +648,8 @@ def select_top_rules_by_delta_mi(
             seed = rid_to_seed.get(rid_str)
             if seed is None:
                 continue  # skip if rule_seed missing
-            excess = max(m["mi"] - m["null"], 0.0)
-            survived_seeds.append((seed, excess))
+            delta = m["mi"] - m["null"]
+            survived_seeds.append((seed, delta))
     else:
         survived_seeds = []
         for path in sorted(rules_dir.glob("*.json")):
@@ -659,9 +659,9 @@ def select_top_rules_by_delta_mi(
             rid = data["rule_id"]
             if rid not in rule_metrics:
                 continue
-            excess = max(rule_metrics[rid]["mi"] - rule_metrics[rid]["null"], 0.0)
+            delta = rule_metrics[rid]["mi"] - rule_metrics[rid]["null"]
             seed = data["metadata"]["rule_seed"]
-            survived_seeds.append((int(seed), excess))
+            survived_seeds.append((int(seed), delta))
 
     survived_seeds.sort(key=lambda x: x[1], reverse=True)
     return [seed for seed, _ in survived_seeds[:top_k]]

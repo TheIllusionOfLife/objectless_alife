@@ -75,7 +75,7 @@ You state that each rule table is evaluated with a single initial configuration 
 4. **Noise floor**: If 0.050 bits is the noise floor at $N=200$ shuffles, confirm how this scales with more shuffles or with rule length / number of samples. Consider a brief convergence plot in supplement.
 5. **Capacity-matched controls**: This is an important confound and should be highlighted more in the main text if space allows, as it directly supports the key claim.
 6. **Reproducibility pointers**: The reproducibility map reference is good; in the paper, ensure that the artifact lineage is stable and that the archive contains the exact commit used for results (even if anonymized).
-7. **Relation to prior work**: You cite Stanley & Lehman style open-endedness and novelty search; it may help to cite minimal criteria / viability-based selection and self-organization / collective behavior work more explicitly, to position MI-based coordination among classic ALife pattern formation literature.
+7. **Relation to prior work**: You cite Stanley & Lehman-style open-endedness and novelty search; it may help to cite minimal criteria / viability-based selection and self-organization / collective behavior work more explicitly, to position MI-based coordination among classic ALife pattern formation literature.
 
 ## Questions for the authors
 

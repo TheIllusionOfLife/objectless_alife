@@ -14,6 +14,7 @@ Usage:
 from __future__ import annotations
 
 import json
+import math
 import random
 import statistics
 import sys
@@ -49,7 +50,15 @@ P2_SIM_LOG = DATA_DIR / "phase_2" / "logs" / "simulation_log.parquet"
 P1_SIM_LOG = DATA_DIR / "phase_1" / "logs" / "simulation_log.parquet"
 CTRL_SIM_LOG = DATA_DIR / "control" / "logs" / "simulation_log.parquet"
 
+
+def _safe_mean(values: list[float]) -> float:
+    return statistics.mean(values) if values else math.nan
+
+
 GRID_W, GRID_H = 20, 20
+HALT_WINDOWS = (5, 10, 20)
+SAMPLE_SIZE = 5000
+MAX_LABELS = 199
 MI_COLUMNS = [
     "rule_id",
     "step",
@@ -156,7 +165,7 @@ def run_halt_window_analysis(
     print("=== Halt-Window Sweep ===")
     config = HaltWindowSweepConfig(
         rule_seeds=tuple(top_seeds),
-        halt_windows=(5, 10, 20),
+        halt_windows=HALT_WINDOWS,
         out_dir=PROJECT_ROOT / "data" / "post_hoc" / "halt_window",
     )
     output_path = run_halt_window_sweep(config)
@@ -164,7 +173,7 @@ def run_halt_window_analysis(
     rows = table.to_pylist()
 
     results: dict[int, dict[str, float]] = {}
-    for window in (5, 10, 20):
+    for window in HALT_WINDOWS:
         window_rows = [r for r in rows if r["halt_window"] == window]
         if not window_rows:
             results[window] = {"survival_rate": 0.0, "median_delta_mi": 0.0}
@@ -208,9 +217,9 @@ def run_alt_null_analysis(
             print(f"  Processed {i + 1}/{len(snapshots)} rules")
 
     results = {
-        "state_shuffle": statistics.mean(state_shuffle_vals),
-        "block_shuffle": statistics.mean(block_shuffle_vals),
-        "fixed_marginal": statistics.mean(fixed_marginal_vals),
+        "state_shuffle": _safe_mean(state_shuffle_vals),
+        "block_shuffle": _safe_mean(block_shuffle_vals),
+        "fixed_marginal": _safe_mean(fixed_marginal_vals),
     }
     for name, val in results.items():
         print(f"  {name}: {val:.4f} bits")
@@ -236,8 +245,8 @@ def run_spatial_scramble_analysis(
             print(f"  Processed {i + 1}/{len(snapshots)} rules")
 
     results = {
-        "observed_mi": statistics.mean(observed_vals),
-        "scrambled_mi": statistics.mean(scrambled_vals),
+        "observed_mi": _safe_mean(observed_vals),
+        "scrambled_mi": _safe_mean(scrambled_vals),
     }
     print(f"  Mean observed MI:  {results['observed_mi']:.4f} bits")
     print(f"  Mean scrambled MI: {results['scrambled_mi']:.4f} bits")
@@ -291,7 +300,7 @@ def run_capacity_matched_analysis() -> dict[str, dict[str, float]]:
     print("  Running Phase 5 (capacity-matched P1) — 5000 rules...")
     phase5_out = PROJECT_ROOT / "data" / "post_hoc" / "phase_5"
     phase5_results = run_batch_search(
-        n_rules=5000,
+        n_rules=SAMPLE_SIZE,
         phase=ObservationPhase.PHASE1_CAPACITY_MATCHED,
         out_dir=phase5_out,
     )
@@ -302,7 +311,7 @@ def run_capacity_matched_analysis() -> dict[str, dict[str, float]]:
         phase5_out / "logs" / "metrics_summary.parquet",
         MI_COLUMNS,
         phase5_results,
-        199,
+        MAX_LABELS,
     )
     phase5_delta_mi = []
     for row in phase5_metrics:
@@ -317,7 +326,7 @@ def run_capacity_matched_analysis() -> dict[str, dict[str, float]]:
     print("  Running Phase 6 (random-encoding P2) — 5000 rules...")
     phase6_out = PROJECT_ROOT / "data" / "post_hoc" / "phase_6"
     phase6_results = run_batch_search(
-        n_rules=5000,
+        n_rules=SAMPLE_SIZE,
         phase=ObservationPhase.PHASE2_RANDOM_ENCODING,
         out_dir=phase6_out,
     )
@@ -328,7 +337,7 @@ def run_capacity_matched_analysis() -> dict[str, dict[str, float]]:
         phase6_out / "logs" / "metrics_summary.parquet",
         MI_COLUMNS,
         phase6_results,
-        199,
+        MAX_LABELS,
     )
     phase6_delta_mi = []
     for row in phase6_metrics:
@@ -391,7 +400,7 @@ def main() -> None:
     print("=" * 60)
 
     print("\n--- Table D: Halt Window Sensitivity ---")
-    for window in (5, 10, 20):
+    for window in HALT_WINDOWS:
         r = halt_results[window]
         print(f"{window}  & {r['survival_rate']:.1f}\\% & {r['median_delta_mi']:.3f} \\\\")
 

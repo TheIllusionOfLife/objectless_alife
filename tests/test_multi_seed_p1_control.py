@@ -92,6 +92,7 @@ class TestSummarizeMultiSeedResults:
                 "mi_shuffle_null": 0.1,
                 "delta_mi": 0.4,
                 "same_state_adjacency_fraction": 0.3,
+                "n_pairs": 0,
             },
             {
                 "rule_seed": 0,
@@ -102,6 +103,7 @@ class TestSummarizeMultiSeedResults:
                 "mi_shuffle_null": 0.1,
                 "delta_mi": 0.2,
                 "same_state_adjacency_fraction": 0.25,
+                "n_pairs": 0,
             },
             {
                 "rule_seed": 1,
@@ -112,6 +114,7 @@ class TestSummarizeMultiSeedResults:
                 "mi_shuffle_null": 0.0,
                 "delta_mi": 0.0,
                 "same_state_adjacency_fraction": 0.0,
+                "n_pairs": 0,
             },
             {
                 "rule_seed": 1,
@@ -122,6 +125,7 @@ class TestSummarizeMultiSeedResults:
                 "mi_shuffle_null": 0.05,
                 "delta_mi": -0.05,
                 "same_state_adjacency_fraction": 0.2,
+                "n_pairs": 0,
             },
         ]
         path = tmp_path / "logs" / "multi_seed_results.parquet"
@@ -151,6 +155,7 @@ class TestSummarizeMultiSeedResults:
                 "mi_shuffle_null": 0.1,
                 "delta_mi": 0.4,
                 "same_state_adjacency_fraction": 0.3,
+                "n_pairs": 0,
             },
             {
                 "rule_seed": 0,
@@ -161,6 +166,7 @@ class TestSummarizeMultiSeedResults:
                 "mi_shuffle_null": 0.1,
                 "delta_mi": 0.2,
                 "same_state_adjacency_fraction": 0.25,
+                "n_pairs": 0,
             },
             {
                 "rule_seed": 1,
@@ -171,6 +177,7 @@ class TestSummarizeMultiSeedResults:
                 "mi_shuffle_null": 0.05,
                 "delta_mi": 0.0,
                 "same_state_adjacency_fraction": 0.2,
+                "n_pairs": 0,
             },
             {
                 "rule_seed": 1,
@@ -181,6 +188,7 @@ class TestSummarizeMultiSeedResults:
                 "mi_shuffle_null": 0.05,
                 "delta_mi": -0.01,
                 "same_state_adjacency_fraction": 0.2,
+                "n_pairs": 0,
             },
         ]
         path = tmp_path / "logs" / "multi_seed_results.parquet"
@@ -206,6 +214,7 @@ class TestSummarizeMultiSeedResults:
                 "mi_shuffle_null": 0.1,
                 "delta_mi": 0.4,
                 "same_state_adjacency_fraction": 0.3,
+                "n_pairs": 0,
             },
             {
                 "rule_seed": 0,
@@ -216,6 +225,7 @@ class TestSummarizeMultiSeedResults:
                 "mi_shuffle_null": 0.1,
                 "delta_mi": 0.2,
                 "same_state_adjacency_fraction": 0.25,
+                "n_pairs": 0,
             },
             {
                 "rule_seed": 1,
@@ -226,6 +236,7 @@ class TestSummarizeMultiSeedResults:
                 "mi_shuffle_null": 0.0,
                 "delta_mi": 0.0,
                 "same_state_adjacency_fraction": 0.0,
+                "n_pairs": 0,
             },
             {
                 "rule_seed": 1,
@@ -236,6 +247,7 @@ class TestSummarizeMultiSeedResults:
                 "mi_shuffle_null": 0.0,
                 "delta_mi": 0.0,
                 "same_state_adjacency_fraction": 0.0,
+                "n_pairs": 0,
             },
         ]
         path = tmp_path / "logs" / "multi_seed_results.parquet"
@@ -264,6 +276,7 @@ class TestSummarizeMultiSeedResults:
                 "mi_shuffle_null": 0.10,
                 "delta_mi": -0.08,
                 "same_state_adjacency_fraction": 0.1,
+                "n_pairs": 0,
             },
             {
                 "rule_seed": 0,
@@ -274,6 +287,7 @@ class TestSummarizeMultiSeedResults:
                 "mi_shuffle_null": 0.10,
                 "delta_mi": -0.07,
                 "same_state_adjacency_fraction": 0.1,
+                "n_pairs": 0,
             },
         ]
         path = tmp_path / "logs" / "multi_seed_results.parquet"
