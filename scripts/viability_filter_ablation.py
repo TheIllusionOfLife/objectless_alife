@@ -24,7 +24,7 @@ PHASE_LABELS = {
 
 
 def _excess_from_table(table: pa.Table) -> dict[str, float]:
-    excess = pc.cast(table.column("mi_excess"), pa.float64(), safe=False)
+    excess = pc.cast(table.column("delta_mi"), pa.float64(), safe=False)
     return {
         str(rule_id): float(value)
         for rule_id, value in zip(

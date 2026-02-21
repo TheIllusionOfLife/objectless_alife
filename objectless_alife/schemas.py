@@ -67,7 +67,7 @@ PHASE_SUMMARY_METRIC_NAMES = [
     "action_entropy_variance",
     "block_ncd",
     "mi_shuffle_null",
-    "mi_excess",
+    "delta_mi",
 ]
 
 # ---------------------------------------------------------------------------
@@ -139,7 +139,8 @@ MULTI_SEED_SCHEMA = pa.schema(
         ("termination_reason", pa.string()),
         ("neighbor_mutual_information", pa.float64()),
         ("mi_shuffle_null", pa.float64()),
-        ("mi_excess", pa.float64()),
+        ("delta_mi", pa.float64()),
+        ("n_pairs", pa.int64()),
         ("same_state_adjacency_fraction", pa.float64()),
         ("update_mode", pa.string()),
         ("state_uniform_mode", pa.string()),
@@ -155,7 +156,8 @@ HALT_WINDOW_SWEEP_SCHEMA = pa.schema(
         ("termination_reason", pa.string()),
         ("neighbor_mutual_information", pa.float64()),
         ("mi_shuffle_null", pa.float64()),
-        ("mi_excess", pa.float64()),
+        ("delta_mi", pa.float64()),
+        ("n_pairs", pa.int64()),
         ("update_mode", pa.string()),
         ("state_uniform_mode", pa.string()),
         ("enable_viability_filters", pa.bool_()),

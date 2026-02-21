@@ -189,7 +189,7 @@ def test_phenotype_taxonomy_handles_missing_adjacency_column(tmp_path: Path, mon
             "rule_id": ["r1", "r2"],
             "state_entropy": [0.9, 0.1],
             "predictability_hamming": [0.7, 0.1],
-            "mi_excess": [0.2, 0.0],
+            "delta_mi": [0.2, 0.0],
         }
     )
     monkeypatch.setattr("scripts.phenotype_taxonomy.load_final_step_metrics", lambda _: table)

@@ -67,11 +67,11 @@ def run_with_medium_filters(
     )
 
 
-def _load_mi_excess_for_survivors(
+def _load_delta_mi_for_survivors(
     metrics_path: Path,
     rules_dir: Path,
 ) -> list[float]:
-    """Load final-step MI_excess values for surviving rules."""
+    """Load final-step delta_mi values for surviving rules."""
     survived_ids: set[str] = set()
     for path in sorted(rules_dir.glob("*.json")):
         data = json.loads(path.read_text())
@@ -93,7 +93,7 @@ def _load_mi_excess_for_survivors(
         if rid not in max_steps or step > max_steps[rid]:
             max_steps[rid] = step
 
-    mi_excess_vals: list[float] = []
+    delta_mi_vals: list[float] = []
     for row in rows:
         rid = row["rule_id"]
         if rid not in survived_ids:
@@ -103,9 +103,9 @@ def _load_mi_excess_for_survivors(
         mi = row.get("neighbor_mutual_information")
         null = row.get("mi_shuffle_null")
         if mi is not None and null is not None:
-            mi_excess_vals.append(max(float(mi) - float(null), 0.0))
+            delta_mi_vals.append(float(mi) - float(null))
 
-    return mi_excess_vals
+    return delta_mi_vals
 
 
 def main() -> None:
@@ -136,12 +136,12 @@ def main() -> None:
 
         medium_survived = sum(1 for r in medium_results if r.survived)
 
-        # MI_excess for medium-filter survivors
-        medium_mi_excess = _load_mi_excess_for_survivors(
+        # delta_mi for medium-filter survivors
+        medium_delta_mi = _load_delta_mi_for_survivors(
             medium_dir / "logs" / "metrics_summary.parquet",
             medium_dir / "rules",
         )
-        median_mi = statistics.median(medium_mi_excess) if medium_mi_excess else 0.0
+        median_mi = statistics.median(medium_delta_mi) if medium_delta_mi else 0.0
 
         result = {
             "weak_survived": weak_survived,
@@ -150,7 +150,7 @@ def main() -> None:
             "medium_survived": medium_survived,
             "medium_total": n_rules,
             "medium_survival_rate": medium_survived / n_rules,
-            "medium_median_mi_excess": median_mi,
+            "medium_median_delta_mi": median_mi,
         }
         all_results[label] = result
 
@@ -162,7 +162,7 @@ def main() -> None:
             f"  Weak+Medium: {medium_survived}/{n_rules} survived "
             f"({result['medium_survival_rate']:.1%})"
         )
-        print(f"  Medium survivors median MI_excess: {median_mi:.4f}")
+        print(f"  Medium survivors median delta_mi: {median_mi:.4f}")
 
     # Print cascade table
     print("\n" + "=" * 60)

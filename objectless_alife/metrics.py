@@ -214,6 +214,25 @@ def action_entropy_variance(per_agent_actions: Sequence[Sequence[int]]) -> float
     return statistics.pvariance(entropies)
 
 
+def neighbor_pair_count(
+    snapshot: tuple[tuple[int, int, int, int], ...], grid_width: int, grid_height: int
+) -> int:
+    """Return the number of distinct occupied adjacent pairs in the snapshot."""
+    occupied = {(x, y) for _, x, y, _ in snapshot}
+    n = 0
+    seen: set[tuple[tuple[int, int], tuple[int, int]]] = set()
+    for x, y in occupied:
+        for nx, ny in (((x + 1) % grid_width, y), (x, (y + 1) % grid_height)):
+            if (nx, ny) not in occupied:
+                continue
+            edge = ((x, y), (nx, ny)) if (x, y) < (nx, ny) else ((nx, ny), (x, y))
+            if edge in seen:
+                continue
+            seen.add(edge)
+            n += 1
+    return n
+
+
 def neighbor_mutual_information(
     snapshot: tuple[tuple[int, int, int, int], ...], grid_width: int, grid_height: int
 ) -> float:

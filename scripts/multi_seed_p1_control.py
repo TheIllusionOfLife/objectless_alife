@@ -80,7 +80,7 @@ def summarize_multi_seed_results(results_path: Path) -> dict:
 
     rule_seeds = sorted(set(r["rule_seed"] for r in rows))
     rules_with_positive_median = 0
-    mi_excess_positive_fracs: list[float] = []
+    delta_mi_positive_fracs: list[float] = []
     overall_survived = 0
     overall_total = 0
 
@@ -90,15 +90,15 @@ def summarize_multi_seed_results(results_path: Path) -> dict:
         overall_survived += len(survived_rows)
         overall_total += len(rule_rows)
 
-        mi_excess_vals = [r["mi_excess"] for r in survived_rows]
-        if mi_excess_vals:
-            median_mi = statistics.median(mi_excess_vals)
+        delta_mi_vals = [r["delta_mi"] for r in survived_rows]
+        if delta_mi_vals:
+            median_mi = statistics.median(delta_mi_vals)
             if median_mi > 0:
                 rules_with_positive_median += 1
-            positive_frac = sum(1 for v in mi_excess_vals if v > 0) / len(mi_excess_vals)
-            mi_excess_positive_fracs.append(positive_frac)
+            positive_frac = sum(1 for v in delta_mi_vals if v > 0) / len(delta_mi_vals)
+            delta_mi_positive_fracs.append(positive_frac)
         else:
-            mi_excess_positive_fracs.append(0.0)
+            delta_mi_positive_fracs.append(0.0)
 
     n_rules = len(rule_seeds)
     return {
@@ -106,7 +106,7 @@ def summarize_multi_seed_results(results_path: Path) -> dict:
         "rules_with_positive_median": rules_with_positive_median,
         "fraction_with_positive_median": (rules_with_positive_median / n_rules if n_rules else 0.0),
         "mean_positive_fraction": (
-            statistics.mean(mi_excess_positive_fracs) if mi_excess_positive_fracs else 0.0
+            statistics.mean(delta_mi_positive_fracs) if delta_mi_positive_fracs else 0.0
         ),
         "overall_survival_rate": (overall_survived / overall_total if overall_total > 0 else 0.0),
     }

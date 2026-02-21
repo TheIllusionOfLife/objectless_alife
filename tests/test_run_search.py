@@ -754,13 +754,13 @@ def test_same_state_adjacency_fraction_column_in_output_parquet(tmp_path: Path) 
     assert "same_state_adjacency_fraction" in metrics.column_names
 
 
-def test_mi_excess_in_phase_summary_metric_names() -> None:
-    """mi_excess is included in PHASE_SUMMARY_METRIC_NAMES."""
-    assert "mi_excess" in PHASE_SUMMARY_METRIC_NAMES
+def test_delta_mi_in_phase_summary_metric_names() -> None:
+    """delta_mi is included in PHASE_SUMMARY_METRIC_NAMES."""
+    assert "delta_mi" in PHASE_SUMMARY_METRIC_NAMES
 
 
-def test_mi_excess_columns_in_phase_summary(tmp_path: Path) -> None:
-    """Phase summary parquet contains mi_excess_mean/p25/p50/p75 columns."""
+def test_delta_mi_columns_in_phase_summary(tmp_path: Path) -> None:
+    """Phase summary parquet contains delta_mi_mean/p25/p50/p75 columns."""
     run_experiment(
         ExperimentConfig(
             phases=(ObservationPhase.PHASE1_DENSITY, ObservationPhase.PHASE2_PROFILE),
@@ -772,11 +772,11 @@ def test_mi_excess_columns_in_phase_summary(tmp_path: Path) -> None:
     )
     summary = pq.read_table(tmp_path / "logs" / "phase_summary.parquet")
     for suffix in ("mean", "p25", "p50", "p75"):
-        assert f"mi_excess_{suffix}" in summary.column_names
+        assert f"delta_mi_{suffix}" in summary.column_names
 
 
-def test_mi_excess_columns_in_density_phase_summary(tmp_path: Path) -> None:
-    """Density phase summary parquet contains mi_excess columns."""
+def test_delta_mi_columns_in_density_phase_summary(tmp_path: Path) -> None:
+    """Density phase summary parquet contains delta_mi columns."""
     run_density_sweep(
         DensitySweepConfig(
             grid_sizes=((5, 5),),
@@ -790,11 +790,11 @@ def test_mi_excess_columns_in_density_phase_summary(tmp_path: Path) -> None:
     )
     summary = pq.read_table(tmp_path / "logs" / "density_phase_summary.parquet")
     for suffix in ("mean", "p25", "p50", "p75"):
-        assert f"mi_excess_{suffix}" in summary.column_names
+        assert f"delta_mi_{suffix}" in summary.column_names
 
 
-def test_mi_excess_is_nonnegative(tmp_path: Path) -> None:
-    """mi_excess values in phase summary are always >= 0."""
+def test_delta_mi_can_be_negative(tmp_path: Path) -> None:
+    """delta_mi values in phase summary can be negative (no floor applied)."""
     run_experiment(
         ExperimentConfig(
             phases=(ObservationPhase.PHASE1_DENSITY, ObservationPhase.PHASE2_PROFILE),
@@ -807,9 +807,9 @@ def test_mi_excess_is_nonnegative(tmp_path: Path) -> None:
     summary = pq.read_table(tmp_path / "logs" / "phase_summary.parquet").to_pylist()
     for row in summary:
         for suffix in ("mean", "p25", "p50", "p75"):
-            val = row[f"mi_excess_{suffix}"]
-            if val is not None:
-                assert val >= 0.0, f"mi_excess_{suffix} = {val} < 0"
+            val = row[f"delta_mi_{suffix}"]
+            # delta_mi can be negative — just verify the column exists and is numeric
+            assert val is None or isinstance(val, float)
 
 
 def test_select_top_rules_by_excess_mi(tmp_path: Path) -> None:
@@ -860,7 +860,7 @@ def test_multi_seed_robustness_output_schema(tmp_path: Path) -> None:
         "survived",
         "neighbor_mutual_information",
         "mi_shuffle_null",
-        "mi_excess",
+        "delta_mi",
     }
     assert expected_cols.issubset(table.column_names)
     assert table.num_rows == 2 * 3  # 2 rules x 3 seeds
@@ -975,7 +975,7 @@ def test_halt_window_sweep_output_schema(tmp_path: Path) -> None:
         "rule_seed",
         "halt_window",
         "survived",
-        "mi_excess",
+        "delta_mi",
         "enable_viability_filters",
     }
     assert expected_cols.issubset(table.column_names)

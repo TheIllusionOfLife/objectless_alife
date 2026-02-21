@@ -117,7 +117,7 @@ def load_final_step_metrics(parquet_path: Path) -> pa.Table:
     table = final_rows.select(table.column_names)
 
     if (
-        "mi_excess" not in table.column_names
+        "delta_mi" not in table.column_names
         and "neighbor_mutual_information" in table.column_names
         and "mi_shuffle_null" in table.column_names
     ):
@@ -129,8 +129,7 @@ def load_final_step_metrics(parquet_path: Path) -> pa.Table:
             diff,
             pa.scalar(None, type=pa.float64()),
         )
-        mi_excess = pc.max_element_wise(finite_diff, pa.scalar(0.0))
-        table = table.append_column("mi_excess", mi_excess)
+        table = table.append_column("delta_mi", finite_diff)
 
     return table
 

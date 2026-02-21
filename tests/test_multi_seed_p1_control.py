@@ -90,7 +90,7 @@ class TestSummarizeMultiSeedResults:
                 "termination_reason": None,
                 "neighbor_mutual_information": 0.5,
                 "mi_shuffle_null": 0.1,
-                "mi_excess": 0.4,
+                "delta_mi": 0.4,
                 "same_state_adjacency_fraction": 0.3,
             },
             {
@@ -100,7 +100,7 @@ class TestSummarizeMultiSeedResults:
                 "termination_reason": None,
                 "neighbor_mutual_information": 0.3,
                 "mi_shuffle_null": 0.1,
-                "mi_excess": 0.2,
+                "delta_mi": 0.2,
                 "same_state_adjacency_fraction": 0.25,
             },
             {
@@ -110,7 +110,7 @@ class TestSummarizeMultiSeedResults:
                 "termination_reason": "halt",
                 "neighbor_mutual_information": 0.0,
                 "mi_shuffle_null": 0.0,
-                "mi_excess": 0.0,
+                "delta_mi": 0.0,
                 "same_state_adjacency_fraction": 0.0,
             },
             {
@@ -120,7 +120,7 @@ class TestSummarizeMultiSeedResults:
                 "termination_reason": None,
                 "neighbor_mutual_information": 0.0,
                 "mi_shuffle_null": 0.05,
-                "mi_excess": 0.0,
+                "delta_mi": 0.0,
                 "same_state_adjacency_fraction": 0.2,
             },
         ]
@@ -149,7 +149,7 @@ class TestSummarizeMultiSeedResults:
                 "termination_reason": None,
                 "neighbor_mutual_information": 0.5,
                 "mi_shuffle_null": 0.1,
-                "mi_excess": 0.4,
+                "delta_mi": 0.4,
                 "same_state_adjacency_fraction": 0.3,
             },
             {
@@ -159,7 +159,7 @@ class TestSummarizeMultiSeedResults:
                 "termination_reason": None,
                 "neighbor_mutual_information": 0.3,
                 "mi_shuffle_null": 0.1,
-                "mi_excess": 0.2,
+                "delta_mi": 0.2,
                 "same_state_adjacency_fraction": 0.25,
             },
             {
@@ -169,7 +169,7 @@ class TestSummarizeMultiSeedResults:
                 "termination_reason": None,
                 "neighbor_mutual_information": 0.05,
                 "mi_shuffle_null": 0.05,
-                "mi_excess": 0.0,
+                "delta_mi": 0.0,
                 "same_state_adjacency_fraction": 0.2,
             },
             {
@@ -179,7 +179,7 @@ class TestSummarizeMultiSeedResults:
                 "termination_reason": None,
                 "neighbor_mutual_information": 0.04,
                 "mi_shuffle_null": 0.05,
-                "mi_excess": 0.0,
+                "delta_mi": 0.0,
                 "same_state_adjacency_fraction": 0.2,
             },
         ]
@@ -204,7 +204,7 @@ class TestSummarizeMultiSeedResults:
                 "termination_reason": None,
                 "neighbor_mutual_information": 0.5,
                 "mi_shuffle_null": 0.1,
-                "mi_excess": 0.4,
+                "delta_mi": 0.4,
                 "same_state_adjacency_fraction": 0.3,
             },
             {
@@ -214,7 +214,7 @@ class TestSummarizeMultiSeedResults:
                 "termination_reason": None,
                 "neighbor_mutual_information": 0.3,
                 "mi_shuffle_null": 0.1,
-                "mi_excess": 0.2,
+                "delta_mi": 0.2,
                 "same_state_adjacency_fraction": 0.25,
             },
             {
@@ -224,7 +224,7 @@ class TestSummarizeMultiSeedResults:
                 "termination_reason": "halt",
                 "neighbor_mutual_information": 0.0,
                 "mi_shuffle_null": 0.0,
-                "mi_excess": 0.0,
+                "delta_mi": 0.0,
                 "same_state_adjacency_fraction": 0.0,
             },
             {
@@ -234,7 +234,7 @@ class TestSummarizeMultiSeedResults:
                 "termination_reason": "halt",
                 "neighbor_mutual_information": 0.0,
                 "mi_shuffle_null": 0.0,
-                "mi_excess": 0.0,
+                "delta_mi": 0.0,
                 "same_state_adjacency_fraction": 0.0,
             },
         ]

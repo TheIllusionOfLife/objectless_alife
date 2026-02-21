@@ -19,26 +19,26 @@ import pyarrow.compute as pc
 from objectless_alife.stats import load_final_step_metrics
 
 # Thresholds for deterministic phenotype taxonomy.
-MI_EXCESS_POLARIZED = 0.12
+MI_DELTA_POLARIZED = 0.12
 ADJACENCY_POLARIZED = 0.60
 ENTROPY_FROZEN = 0.30
 PREDICTABILITY_FROZEN = 0.20
-MI_EXCESS_MIXED = 0.05
+MI_DELTA_MIXED = 0.05
 ENTROPY_MIXED = 0.60
 PREDICTABILITY_MIXED = 0.40
 
 
 def _classify_row(row: dict[str, float | str]) -> str:
-    mi_excess = float(row["mi_excess"])
+    delta_mi = float(row["delta_mi"])
     entropy = float(row["state_entropy"])
     adjacency = float(row["same_state_adjacency_fraction"])
     predictability = float(row["predictability_hamming"])
-    if mi_excess >= MI_EXCESS_POLARIZED and adjacency >= ADJACENCY_POLARIZED:
+    if delta_mi >= MI_DELTA_POLARIZED and adjacency >= ADJACENCY_POLARIZED:
         return "polarized_cluster"
     if entropy <= ENTROPY_FROZEN and predictability <= PREDICTABILITY_FROZEN:
         return "frozen_patch"
     if (
-        mi_excess >= MI_EXCESS_MIXED
+        delta_mi >= MI_DELTA_MIXED
         and entropy >= ENTROPY_MIXED
         and predictability >= PREDICTABILITY_MIXED
     ):
@@ -67,11 +67,11 @@ def main(argv: list[str] | None = None) -> None:
             pa.array([0.0] * table.num_rows, type=pa.float64()),
         )
 
-    mi_col = pc.cast(table.column("mi_excess"), pa.float64(), safe=False)
+    mi_col = pc.cast(table.column("delta_mi"), pa.float64(), safe=False)
     mi_filled = pc.if_else(pc.is_valid(mi_col), mi_col, pa.scalar(0.0))
     enriched = table.set_column(
-        table.column_names.index("mi_excess"),
-        "mi_excess",
+        table.column_names.index("delta_mi"),
+        "delta_mi",
         mi_filled,
     )
 
@@ -81,10 +81,10 @@ def main(argv: list[str] | None = None) -> None:
             "state_entropy",
             "predictability_hamming",
             "same_state_adjacency_fraction",
-            "mi_excess",
+            "delta_mi",
         ]
     ).to_pylist()
-    rows.sort(key=lambda row: float(row["mi_excess"]), reverse=True)
+    rows.sort(key=lambda row: float(row["delta_mi"]), reverse=True)
     top_rows = rows[: args.top_k]
 
     classified: list[dict[str, float | str]] = []
@@ -100,7 +100,7 @@ def main(argv: list[str] | None = None) -> None:
             "same_state_adjacency_fraction": float(row["same_state_adjacency_fraction"])
             if row["same_state_adjacency_fraction"] is not None
             else 0.0,
-            "mi_excess": float(row["mi_excess"]),
+            "delta_mi": float(row["delta_mi"]),
         }
         normalized["phenotype"] = _classify_row(normalized)
         classified.append(normalized)
@@ -128,7 +128,7 @@ def main(argv: list[str] | None = None) -> None:
                 "state_entropy",
                 "predictability_hamming",
                 "same_state_adjacency_fraction",
-                "mi_excess",
+                "delta_mi",
                 "phenotype",
             ],
         )
