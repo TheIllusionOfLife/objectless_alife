@@ -12,6 +12,7 @@ Agent-facing repository instructions for `objectless_alife`.
 
 - Python ecosystem uses `uv` only.
 - LaTeX compilation uses `tectonic` (not pdflatex/latexmk).
+- Overfull `\hbox` warnings are not accepted. Fix column widths, line breaks, or wording until tectonic reports no overfull lines.
 - Required Python version: 3.11+
 - Install dependencies:
 
