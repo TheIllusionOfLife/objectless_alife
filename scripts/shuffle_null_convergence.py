@@ -25,14 +25,16 @@ from scripts._common import load_final_snapshots  # noqa: E402
 
 DATA_DIR = PROJECT_ROOT / "data" / "stage_d"
 DEFAULT_N_SHUFFLES = 200
+GRID_W, GRID_H = 20, 20
+N_SWEEP_VALUES: tuple[int, ...] = (10, 25, 50, 100, 200, 500)
 
 
 def run_convergence_analysis(
     snapshots: dict[str, tuple[tuple[int, int, int, int], ...]],
     n_values: list[int],
     seed: int,
-    grid_width: int = 20,
-    grid_height: int = 20,
+    grid_width: int = GRID_W,
+    grid_height: int = GRID_H,
 ) -> dict[int, dict[str, float]]:
     """Compute mean and std of shuffle-null MI across snapshots for each N.
 
@@ -113,7 +115,7 @@ def main(argv: list[str] | None = None) -> None:
     snapshots = load_final_snapshots(sim_log_path, rule_ids)
     print(f"  Loaded {len(snapshots)} snapshots")
 
-    n_values = [10, 25, 50, 100, 200, 500]
+    n_values = list(N_SWEEP_VALUES)
     print("Running convergence analysis...")
     result = run_convergence_analysis(snapshots, n_values, seed=args.seed)
 

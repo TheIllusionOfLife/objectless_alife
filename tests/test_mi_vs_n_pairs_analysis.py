@@ -54,6 +54,16 @@ def test_bootstrap_median_ci_single_empty():
     assert math.isnan(hi)
 
 
+def test_bootstrap_median_ci_single_zero_bootstrap():
+    """bootstrap_median_ci_single returns (nan, nan) when n_bootstrap=0."""
+    import math
+
+    rng = random.Random(42)
+    lo, hi = module.bootstrap_median_ci_single([1.0, 2.0, 3.0], n_bootstrap=0, rng=rng)
+    assert math.isnan(lo)
+    assert math.isnan(hi)
+
+
 def test_compute_bin_stats_empty():
     """compute_bin_stats with empty data returns an empty dict."""
     rng = random.Random(42)

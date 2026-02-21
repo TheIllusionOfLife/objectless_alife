@@ -65,9 +65,11 @@ def bootstrap_median_ci_single(
 ) -> tuple[float, float]:
     """Percentile bootstrap 95 % CI for the median of *values*.
 
-    Returns ``(nan, nan)`` when *values* is empty.
+    Returns ``(nan, nan)`` when *values* is empty or *n_bootstrap* is zero.
     """
     if not values:
+        return float("nan"), float("nan")
+    if n_bootstrap <= 0:
         return float("nan"), float("nan")
     n = len(values)
     medians: list[float] = []
