@@ -30,6 +30,7 @@ from scripts._common import load_final_snapshots  # noqa: E402
 
 DATA_DIR = PROJECT_ROOT / "data" / "stage_d"
 GRID_W, GRID_H = 20, 20
+DEFAULT_N_BOOTSTRAPS = 2000
 
 CONDITIONS: dict[str, str] = {
     "phase_2": "Phase 2",
@@ -138,8 +139,8 @@ def _plot(
             ys.append(s["median"])
             errs.append([s["median"] - s["ci_low"], s["ci_high"] - s["median"]])
         if xs:
-            err_lo = [e[0] for e in errs]
-            err_hi = [e[1] for e in errs]
+            err_lo = [max(0.0, e[0]) for e in errs]
+            err_hi = [max(0.0, e[1]) for e in errs]
             ax.bar(
                 xs,
                 ys,
@@ -166,7 +167,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="MI vs neighbor-pair-count analysis")
     parser.add_argument("--output-dir", type=str, default="paper/figures/")
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--n-bootstrap", type=int, default=2000)
+    parser.add_argument("--n-bootstrap", type=int, default=DEFAULT_N_BOOTSTRAPS)
     args = parser.parse_args(argv)
 
     output_dir = Path(args.output_dir)

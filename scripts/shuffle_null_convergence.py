@@ -16,8 +16,15 @@ import statistics
 import sys
 from pathlib import Path
 
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt  # noqa: E402
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+import pyarrow.parquet as pq  # noqa: E402
 
 from objectless_alife.metrics import shuffle_null_mi  # noqa: E402
 from objectless_alife.run_search import select_top_rules_by_delta_mi  # noqa: E402
@@ -49,8 +56,8 @@ def run_convergence_analysis(
             rng = random.Random(seed + i)
             mi_null = shuffle_null_mi(snap, grid_width, grid_height, n_shuffles=n, rng=rng)
             mi_values.append(mi_null)
-        mean_val = statistics.mean(mi_values) if mi_values else 0.0
-        std_val = statistics.stdev(mi_values) if len(mi_values) >= 2 else 0.0
+        mean_val = statistics.mean(mi_values) if mi_values else float("nan")
+        std_val = statistics.stdev(mi_values) if len(mi_values) >= 2 else float("nan")
         result[n] = {"mean": mean_val, "std": std_val}
 
     return result
@@ -61,11 +68,6 @@ def plot_convergence(
     output_path: Path,
 ) -> None:
     """Plot shuffle-null MI convergence and save to *output_path*."""
-    import matplotlib
-
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-
     n_vals = sorted(result.keys())
     means = [result[n]["mean"] for n in n_vals]
     stds = [result[n]["std"] for n in n_vals]
@@ -110,7 +112,18 @@ def main(argv: list[str] | None = None) -> None:
     top_seeds = select_top_rules_by_delta_mi(metrics_path, rules_dir, top_k=args.top_k)
     print(f"  Found {len(top_seeds)} seeds")
 
-    rule_ids = {f"phase2_rs{s}_ss{s}" for s in top_seeds}
+    # Derive exact rule_ids from experiment_runs to avoid assuming rule_seed==sim_seed.
+    exp_parquet = DATA_DIR / "phase_2" / "logs" / "experiment_runs.parquet"
+    top_seed_set = set(top_seeds)
+    if exp_parquet.exists():
+        exp_rows = pq.read_table(exp_parquet, columns=["rule_id", "rule_seed"]).to_pylist()
+        rule_ids = {
+            str(r["rule_id"])
+            for r in exp_rows
+            if r["rule_seed"] is not None and int(r["rule_seed"]) in top_seed_set
+        }
+    else:
+        rule_ids = {f"phase2_rs{s}_ss{s}" for s in top_seeds}
     print("Loading final-step snapshots...")
     snapshots = load_final_snapshots(sim_log_path, rule_ids)
     print(f"  Loaded {len(snapshots)} snapshots")

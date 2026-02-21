@@ -53,18 +53,18 @@ def test_convergence_stability():
 
 
 def test_convergence_analysis_empty_snapshots():
-    """run_convergence_analysis handles an empty snapshots dict gracefully."""
+    """run_convergence_analysis returns nan for empty snapshots (no data to report)."""
     result = module.run_convergence_analysis(
         {}, n_values=[5, 10], seed=42, grid_width=5, grid_height=5
     )
     assert set(result.keys()) == {5, 10}
     for stats in result.values():
-        assert stats["mean"] == 0.0
-        assert stats["std"] == 0.0
+        assert math.isnan(stats["mean"])
+        assert math.isnan(stats["std"])
 
 
 def test_convergence_analysis_single_snapshot():
-    """run_convergence_analysis handles a single snapshot (std=0 fallback)."""
+    """run_convergence_analysis: single snapshot has valid mean, nan std."""
     snapshots = _make_synthetic_snapshots(n_snapshots=1)
     result = module.run_convergence_analysis(
         snapshots, n_values=[5, 10], seed=42, grid_width=5, grid_height=5
@@ -72,7 +72,7 @@ def test_convergence_analysis_single_snapshot():
     assert set(result.keys()) == {5, 10}
     for stats in result.values():
         assert math.isfinite(stats["mean"])
-        assert stats["std"] == 0.0
+        assert math.isnan(stats["std"])
 
 
 def test_plot_convergence(tmp_path: Path):
