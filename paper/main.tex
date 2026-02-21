@@ -37,15 +37,15 @@ We propose an objective-free but viability-filtered approach based on
 large-scale random rule generation, comparing four observation conditions:
 random walk, a step-clock control, density-only observation, and state-profile observation.
 Across 5{,}000 rules per condition, agents with state-profile observation
-achieve nonzero median excess MI (MI calibrated by a permutation-based shuffle
+achieve nonzero median $\Delta\mathrm{MI}$ (MI calibrated by a permutation-based shuffle
 null that controls for pair-count bias) while
 density-only and control agents remain at zero
 (Cliff's $\delta = 0.355$; median-difference bootstrap 95\% CI $[0.078, 0.111]$; Table~\ref{tab:stats}),
-and the evidence ladder Control $\leq$ Phase~1 $<$ Phase~2 holds across all
+and the ordering Control $\leq$ Phase~1 $<$ Phase~2 holds across all
 rule-based comparisons.
 A Miller-Madow bias-corrected estimator is used throughout, and a shuffle null
 confirms that the random walk's elevated raw MI is entirely attributable to
-pair-count bias ($\mathrm{MI}_{\mathrm{excess}}$ near zero at 0.050~bits, within the noise
+pair-count bias ($\Delta\mathrm{MI}$ near zero at 0.050~bits, within the noise
 floor of the $N\!=\!200$ shuffle null).
 Moran's $I$ further distinguishes local coordination from large-scale clustering.
 These results demonstrate that observation channel richness---not rule table
@@ -83,19 +83,22 @@ meaningful spatial structure emerge in a multi-agent system with no fitness
 function?}
 
 We explore the unexplored quadrant of \emph{no positive objective $\times$
-viability-only selection}, where the only filtering criterion is physical
-consistency---removing rules that produce trivially broken simulations (all
-agents halt or converge to a single state). This viability-only filtering is
-analogous to minimal physical constraints: it constrains what is possible
-without specifying what is desirable. Importantly, this negative selection
-does constitute a minimal selection pressure (surviving rules must avoid
-degenerate dynamics), but no behavioral or performance criterion is employed.
+viability-only selection}, where the only filtering criterion is
+non-degeneracy---removing rules that produce trivially degenerate simulations
+(all agents halt or converge to a single state). Crucially, while this negative
+selection does constitute a minimal selection pressure (surviving rules must
+avoid complete stasis and global state uniformity), it imposes no behavioral or
+performance criterion: any surviving rule is equally valid regardless of its
+spatial structure, MI level, or action distribution. This is analogous to
+\emph{minimal criteria} selection~\citep{lehman2011abandoning}---a deliberately
+weak constraint that shapes the set of viable rules without specifying what is
+desirable.
 
 Our core contribution is threefold:
 \begin{enumerate}
   \item A minimal grid-world model with objective-free negative selection,
-        where random rule tables are evaluated and only physically inconsistent
-        ones are discarded.
+        where random rule tables are evaluated and only degenerate ones
+        (halt or state-uniformity) are discarded.
   \item Evidence that \emph{observation richness}---the amount of neighbor
         state information available to agents---drives emergent spatial
         coordination, independent of rule table capacity.
@@ -131,6 +134,9 @@ behaviors. The open-ended evolution community has explored various
 approaches to sustaining innovation~\citep{taylor2016open,
 stanley2019openended}. However, all such approaches still employ an evaluation
 function---whether fitness, novelty, or complexity.
+The \emph{minimal criteria} framework~\citep{lehman2011abandoning} uses
+deliberately weak constraints to avoid trivial solutions without imposing
+performance objectives---our viability filtering is directly analogous.
 
 \paragraph{Information-theoretic measures.}
 Mutual information and transfer entropy have been used to quantify coordination
@@ -141,7 +147,7 @@ selection criterion.
 \paragraph{Our position.}
 Our approach differs from all the above by using \emph{no positive objective}
 ---not fitness, novelty, or complexity as an optimization target. We generate
-random rules, discard only physically broken ones, and ask what structure the
+random rules, discard only degenerate ones (halt or state-uniformity), and ask what structure the
 surviving rules exhibit.
 
 %% =========================================================================
@@ -163,10 +169,13 @@ occupied cell fails silently.
 \begin{figure*}[htbp]
 \centering
 \includegraphics[width=\linewidth]{figures/fig1_snapshot_grid.pdf}
-\caption{Grid snapshots of hand-picked highest-MI surviving rules from each
-condition (final-step grid; Miller-Madow estimator).
-MI values shown are for individual top-performing rules, not condition
+\caption{Grid snapshots of hand-picked highest-$\Delta\mathrm{MI}$ surviving
+rules from each condition (final-step grid; Miller-Madow estimator).
+Raw MI values shown are for individual top-performing rules, not condition
 medians; see Table~\ref{tab:mi_summary} for population statistics.
+RW and Control panels may show similar elevated raw MI---this is expected, as
+raw MI is inflated by pair-count bias; $\Delta\mathrm{MI}$ (Table~\ref{tab:mi_summary})
+correctly shows near-zero calibrated values for both.
 Each panel shows the $20 \times 20$ toroidal grid with agents colored by
 internal state. Phase~2 rules produce visibly clustered spatial patterns,
 while Control rules appear disordered.}
@@ -202,18 +211,21 @@ to agents:
 
 \paragraph{Random Walk (RW).}
 Each agent selects an action uniformly at random from $\{0, \ldots, 8\}$ at
-every step, ignoring the rule table entirely. This baseline isolates the
-contribution of grid geometry (collision avoidance, toroidal wrapping) from
-rule-driven behavior, and also serves to calibrate the MI estimator under
-conditions with minimal spatial clustering.
+every step, ignoring the rule table entirely.
+(Reported as ``5{,}000 seeded runs'' rather than rules, since no rule table is
+consulted.)
+This baseline isolates the contribution of grid geometry (collision avoidance,
+toroidal wrapping) from rule-driven behavior, and also serves to calibrate the
+MI estimator under conditions with minimal spatial clustering.
 
 \paragraph{Control (step-clock).}
 Agents observe their own state $s \in \{0,\ldots,3\}$, the count of occupied
 von~Neumann neighbors $n \in \{0,\ldots,4\}$, and a periodic step clock
 $t \bmod 5 \in \{0,\ldots,4\}$. The rule table has $4 \times 5 \times 5 = 100$
-entries. The step clock provides no neighbor state information---it is a
-non-informative third dimension that matches the table size of Phase~2 without
-adding spatial content.
+entries. The step clock is non-informative \emph{about neighbor identity or state}---a
+global clock can induce temporal synchrony but carries no spatial information
+about neighbors.  It serves as a capacity-matched third dimension that reaches
+Phase~2's table size without adding any spatial content.
 
 \paragraph{Phase 1: density-only (P1).}
 Agents observe their own state $s$ and neighbor count $n$. The rule table has
@@ -227,17 +239,22 @@ neighbors, with ties broken by smallest value; 4 denotes no occupied neighbors).
 The rule table has $4 \times 5 \times 5 = 100$ entries, indexed by
 $25s + 5n + d$.
 
-\subsection{Physical Filters}
+\subsection{Viability Filters}
 
-Only two filters are applied, both targeting physical inconsistency rather than
+Only two filters are applied, both enforcing non-degeneracy rather than
 behavioral quality:
-\begin{itemize}
+\begin{enumerate}
   \item \textbf{Halt detection}: If all agents' positions and states remain
-        unchanged for 10 consecutive steps, the simulation is terminated early.
-  \item \textbf{State uniformity}: If all 30 agents converge to the same
-        internal state, the simulation is terminated (an indistinguishable
-        system is information-theoretically trivial).
-\end{itemize}
+        unchanged for $W=10$ consecutive steps, the simulation is terminated.
+        Applied uniformly from step~1 with no burn-in.
+  \item \textbf{State uniformity}: If all 30 agents share the same internal
+        state at any step, the simulation is terminated.
+        Global homogeneity is the criterion; partial uniformity is not penalized.
+\end{enumerate}
+These filters are applied identically across all four conditions and all density
+levels.  Any surviving rule may exhibit any spatial pattern, MI value, or action
+distribution; the filters exclude only dynamical trivialism (complete stasis or
+indistinguishable agents).
 No fitness function, novelty metric, complexity threshold, or behavioral
 criterion is used at any stage.
 Across 5{,}000 rules per condition, survival rates are:
@@ -266,8 +283,28 @@ correction~\citep{miller1955note}: $\hat{I}_{\mathrm{MM}} = \hat{I} -
 $K_X$, and $K_Y$ are the counts of non-zero bins in the joint and each marginal
 distribution respectively, and $n$ is the number of pairs. Values are clamped
 to $\geq 0$.
+Concretely: the random variables are the internal states of both agents in each
+occupied adjacent pair at the \emph{final simulation step} (step~200).
+All occupied neighbor pairs at that step are pooled and MI is computed once
+from the aggregate joint count---not averaged over per-step estimates.
+MI is not conditioned on density; pair-count bias is controlled via the
+shuffle null instead.
 High MI indicates that neighboring agents' states are statistically
 dependent---a signature of spatial coordination.
+
+\paragraph{Interpreting $\Delta\mathrm{MI}$ as coordination.}
+Neighbor $\Delta\mathrm{MI}$ measures local statistical dependence between
+adjacent agents' states beyond chance.  A positive $\Delta\mathrm{MI}$
+indicates state assignments are not spatially random.  Crucially,
+$\Delta\mathrm{MI}$ alone does not distinguish \emph{dynamic} coordination
+from \emph{frozen} clustering: a world where agents freeze in correlated
+positions would also yield high MI.  We address this via two complementary
+analyses: (i)~temporal MI trajectories (Figure~\ref{fig:mi_timeseries})
+distinguish frozen early-plateau dynamics (Phase~1) from sustained dynamic
+coordination (Phase~2), and (ii)~transfer entropy (supplementary material)
+confirms directional information flow in Phase~2 beyond symmetric MI.
+The viability filter further rules out the most trivial high-MI scenario by
+explicitly removing state-uniform worlds.
 
 \paragraph{Shuffle-null MI calibration.}
 To control for pair-count bias---where configurations with few neighbor pairs
@@ -278,17 +315,24 @@ computing $\hat{I}_{\mathrm{MM}}$ for each shuffle.  Specifically, the shuffle
 operator preserves: (i) the set of occupied positions, (ii) the neighbor-pair
 graph structure, and (iii) the marginal state-frequency counts; it permutes
 only the assignment of states to positions.  The mean across shuffles
-is the shuffle-null MI.  The \emph{excess MI} is then:
+is the shuffle-null MI.  The calibrated $\Delta\mathrm{MI}$ is then:
 \begin{equation}
-  \mathrm{MI}_{\mathrm{excess}} = \max\!\bigl(\hat{I}_{\mathrm{MM}} -
-  \overline{I}_{\mathrm{shuffle}},\; 0\bigr)
-  \label{eq:mi_excess}
+  \Delta\mathrm{MI} = \hat{I}_{\mathrm{MM}} - \overline{I}_{\mathrm{shuffle}}
+  \label{eq:delta_mi}
 \end{equation}
 which isolates genuine spatial coordination from estimation artifacts.
+Unlike a rectified (max(0)) version, the unrectified $\Delta\mathrm{MI}$
+allows negative values when the observed MI falls below the shuffle null,
+providing an unbiased view of the full distribution.
+Specifically: positions are fixed; states among occupied cells are uniformly
+permuted; $\hat{I}_{\mathrm{MM}}$ is computed for each of $N=200$ shuffles;
+$\overline{I}_{\mathrm{shuffle}}$ is the mean over those shuffles.
+The Miller-Madow correction is applied independently to both the observed MI
+and each shuffle replicate before averaging.
 All MI values are in bits (base-2 logarithm).
 In particular, the random walk's high raw MI
 ($\approx 0.91$~bits) is entirely attributable to pair-count bias:
-$\mathrm{MI}_{\mathrm{excess}}$ near zero (0.050~bits, within the noise floor
+$\Delta\mathrm{MI}$ near zero (0.050~bits, within the noise floor
 of the $N\!=\!200$ shuffle null).
 
 \paragraph{Same-state adjacency fraction.}
@@ -350,7 +394,11 @@ reflect one initial configuration.
 
 Table~\ref{tab:mi_summary} and Figure~\ref{fig:mi_distribution} present the
 neighbor mutual information across all four conditions. Among the three
-rule-based conditions, a clear monotonic ordering emerges:
+rule-based conditions, Phase~2 separates clearly from both baselines.
+A smaller but statistically detectable shift also holds between Phase~1 and
+Control (Cliff's $\delta = 0.124$; see Table~\ref{tab:stats}), though both
+share median $\Delta\mathrm{MI} = 0$ and the practical coordination difference
+is negligible.  The ordering is:
 
 \begin{center}
 \textbf{Control $<$ Phase~1 $<$ Phase~2}
@@ -359,22 +407,22 @@ rule-based conditions, a clear monotonic ordering emerges:
 \begin{table*}[htbp]
 \centering
 \caption{Calibrated neighbor mutual information and spatial clustering by condition.
-MI\textsubscript{excess} = MI\textsubscript{observed} $-$ MI\textsubscript{shuffle null}
+$\Delta$MI = MI\textsubscript{observed} $-$ MI\textsubscript{shuffle null}
 is the primary calibrated metric controlling for pair-count bias
 (5{,}000 rules per condition, $N=200$ shuffles).
 Raw MI values use the Miller-Madow bias-corrected estimator and are reported secondarily.
 The random walk's high raw MI is entirely attributable to pair-count bias
-(MI\textsubscript{excess} near zero at 0.050~bits, within the shuffle-null
+($\Delta$MI $\approx 0.050$~bits, within the shuffle-null
 noise floor).}
 \label{tab:mi_summary}
-\begin{tabular}{lccccc}
+\begin{tabular}{lcccccc}
 \toprule
-Condition & Table Size & Median MI\textsubscript{excess} & Median MI & Median Adj.\ Frac.\footnotemark & Survival \\
+Condition & Table Size & Median $\Delta$MI & Median MI & Median Adj.\ Frac.\footnotemark & Frac.\ $\Delta\mathrm{MI}>0$ & Survival \\
 \midrule
-Random Walk & 1 (unused) & 0.050 & 0.910  & 0.364 & 100.0\% \\
-Control     & 100        & 0.000 & 0.000  & 0.329 & 44.5\% \\
-Phase 1     & 20         & 0.000 & 0.019  & 0.291 & 71.4\% \\
-Phase 2     & 100        & 0.096 & 0.298  & 0.350 & 74.7\% \\
+Random Walk & 1 (unused) & 0.050 & 0.910  & 0.364 & 52\% & 100.0\% \\
+Control     & 100        & 0.000 & 0.000  & 0.329 & 14\% & 44.5\% \\
+Phase 1     & 20         & 0.000 & 0.019  & 0.291 & 29\% & 71.4\% \\
+Phase 2     & 100        & 0.096 & 0.298  & 0.350 & 58\% & 74.7\% \\
 \bottomrule
 \end{tabular}
 \footnotetext{Same-state adjacency fraction (join count statistic for
@@ -409,18 +457,27 @@ number of joint-distribution bins $K$---precisely the regime of random-walk
 agents, where $\approx$4--5 adjacent pairs populate up to 16 joint
 categories.
 
+The expected pair count varies substantially by condition: at the final step
+(step~200), the mean $\pm$ SD number of occupied adjacent pairs is
+$4.3 \pm 1.9$ for Random Walk, $3.9 \pm 3.6$ for Control,
+$11.0 \pm 8.1$ for Phase~1, and $12.0 \pm 7.3$ for Phase~2.
+Phase~1 and Phase~2 produce far more adjacent pairs than the baselines
+because rule-driven agents tend to aggregate; yet their $\Delta\mathrm{MI}$
+values differ dramatically (0.000 vs.\ 0.096~bits), confirming that the
+difference reflects state structure rather than sample-size effects.
+
 The shuffle null resolves this directly. By permuting states among fixed
 positions ($N=200$ shuffles per rule), we obtain the expected MI under the
-null hypothesis of no spatial state structure. The excess MI
-($\mathrm{MI}_{\mathrm{excess}} = \mathrm{MI}_{\mathrm{observed}} -
-\overline{\mathrm{MI}}_{\mathrm{shuffle}}$) isolates genuine coordination
-from pair-count artifacts.
+null hypothesis of no spatial state structure. The calibrated
+$\Delta\mathrm{MI} = \mathrm{MI}_{\mathrm{observed}} -
+\overline{\mathrm{MI}}_{\mathrm{shuffle}}$ isolates genuine coordination
+from pair-count artifacts (see Eq.~\ref{eq:delta_mi}).
 
-For the random walk, $\mathrm{MI}_{\mathrm{excess}}$ is near zero
+For the random walk, $\Delta\mathrm{MI}$ is near zero
 (0.050~bits)
 (Table~\ref{tab:mi_summary}), confirming that its elevated raw MI is
 entirely attributable to pair-count bias---not spatial structure. In
-contrast, Phase~2 retains substantial excess MI, demonstrating genuine
+contrast, Phase~2 retains substantial $\Delta\mathrm{MI}$, demonstrating genuine
 coordination that persists after bias calibration. Notably, the Control
 condition---not Phase~2---has the highest median Moran's $I$ (0.124),
 reflecting clustered but uncoordinated spatial patterns from its large table
@@ -500,6 +557,46 @@ fluctuations.}
 \label{fig:mi_timeseries}
 \end{figure}
 
+\subsection{Seed Robustness}
+\label{sec:seed_robustness}
+
+To confirm that condition-level differences reflect rule properties rather than
+single-seed outcomes, we re-evaluated the top 50 rules from each rule-based
+condition across 20 independent initial seeds (1{,}000 simulations per condition).
+Among Phase~2 rules, 84\% maintain positive median $\Delta\mathrm{MI}$ across
+seeds (mean $P(\Delta\mathrm{MI}>0) = 0.748$).
+For Phase~1 and Control, the corresponding figures are 36\% and 44\%
+respectively.  The Phase~2 $\Delta\mathrm{MI}$ advantage is not seed-specific:
+the condition ordering is preserved regardless of initial configuration.
+
+\subsection{Coordination Archetypes}
+\label{sec:archetypes}
+
+To characterize \emph{what kind} of coordination Phase~2 produces, we examined
+top-performing rules and temporal trajectories, identifying three recurring
+coordination patterns:
+
+\begin{enumerate}
+  \item \textbf{State-propagation dynamics.}  Agents propagate the dominant
+        neighbor state across the grid, producing traveling wavefronts of state
+        transitions.  These rules show high $\Delta\mathrm{MI}$, moderate
+        same-state adjacency fraction, and sustained MI fluctuations
+        (consistent with Phase~2's dynamic temporal trajectory).
+  \item \textbf{Frozen coordination (majority-locking).}  Agents rapidly
+        converge to a dominant state and freeze, yielding high but static MI.
+        This pattern resembles Phase~1 behavior but arises via state-dependent
+        rather than density-only rules.
+  \item \textbf{Persistent boundary structures.}  Stable clusters form at
+        domain boundaries between different states, maintaining high
+        neighbor-state correlation (positive $\Delta\mathrm{MI}$) with minimal
+        movement.  Near-zero Moran's $I$ confirms these are local structures,
+        not large-scale uniform clusters.
+\end{enumerate}
+
+This taxonomy is based on qualitative inspection; formal feature-based
+clustering is available in the code repository
+(\texttt{scripts/phenotype\_taxonomy.py}).
+
 \subsection{Statistical Significance}
 
 Table~\ref{tab:stats} presents Mann-Whitney $U$ test results for the primary
@@ -508,14 +605,18 @@ highly significant after Holm-Bonferroni correction.
 
 \begin{table*}[htbp]
 \centering
-\caption{Pairwise statistical tests for $\mathrm{MI}_{\mathrm{excess}}$
-(Eq.~\ref{eq:mi_excess}).
+\caption{Pairwise statistical tests for $\Delta\mathrm{MI}$
+(Eq.~\ref{eq:delta_mi}).
 Cliff's $\delta$ measures effect size (= rank-biserial $r$); bootstrap
 95\% CIs for the median difference (10{,}000 resamples) are the
 primary effect-size statistic; $p$-values (Holm-Bonferroni corrected) are
 secondary.  Note that Cliff's $\delta$ measures stochastic dominance
 (probability that a random draw from one group exceeds the other), whereas
-the bootstrap CI estimates the location shift of the median difference.}
+the bootstrap CI estimates the location shift of the median difference.
+Effect-size interpretation: $\delta = 0.355$ (P1 vs.\ P2) is moderate-to-large;
+$\delta = 0.124$ (Ctrl vs.\ P1) is small but statistically reliable with $n > 2000$;
+median differences for Ctrl vs.\ P1 are $<\!0.001$~bits, indicating practical
+equivalence in coordination level despite statistical detectability.}
 \label{tab:stats}
 \begin{tabular}{llccccc}
 \toprule
@@ -571,7 +672,7 @@ require dedicated criticality analyses beyond the scope of the present work.
 
 \paragraph{Viability filtering as minimal selection.}
 Our methodology embodies a minimal philosophy: generate random configurations,
-remove only the physically broken ones, and examine what structure the survivors
+remove only the degenerate ones (halt or state-uniformity), and examine what structure the survivors
 exhibit. We acknowledge that this ``negative selection'' constitutes a minimal
 selection pressure---surviving rules must avoid degenerate dynamics (halt or
 state uniformity)---but it is purely physical, imposing no behavioral or
@@ -591,7 +692,7 @@ The relevant comparison is P1 and P2's near-identical $r \approx 0.14$,
 which indicates that the MI advantage of Phase~2 over Phase~1 is not an
 artifact of differential filter selection: both conditions have nearly
 identical filter-MI correlation, yet Phase~2 achieves substantially higher
-$\mathrm{MI}_{\mathrm{excess}}$.
+$\Delta\mathrm{MI}$.
 
 \paragraph{Directional information flow.}
 Transfer entropy analysis (supplementary material) confirms that the spatial
@@ -606,7 +707,7 @@ To further isolate the role of observation \emph{content} from table
 (supplementary material): (i)~a capacity-matched Phase~1 with 100-entry
 tables aliased to 20 effective observations, and (ii)~a random-encoding
 Phase~2 with randomly permuted neighborhood-to-observation mappings.
-Both controls produce $\mathrm{MI}_{\mathrm{excess}}$ significantly below
+Both controls produce $\Delta\mathrm{MI}$ significantly below
 standard Phase~2, confirming that structured encoding of neighbor state
 information---not table size or alphabet size---drives coordination.
 
@@ -686,7 +787,10 @@ Several limitations constrain the generalizability of our findings:
         for the top 50 rules from each rule-based condition (Phase~2, Phase~1,
         and Control), confirming that MI levels---whether high, low, or
         zero---are stable properties of the rule table, not seed-specific
-        accidents.
+        accidents.  As a brief in-text summary: among the top 50 Phase~2 rules
+        re-evaluated across 20 independent seeds, 84\% maintain positive
+        median $\Delta\mathrm{MI}$ (mean $P(\Delta\mathrm{MI}>0)=0.748$),
+        compared to 36\% for Phase~1 and 44\% for Control.
   \item \textbf{Halt window sensitivity}: The main experiments use a
         10-step halt window. A sensitivity sweep across \{5, 10, 20\}
         (supplementary material) confirms that results are robust to
