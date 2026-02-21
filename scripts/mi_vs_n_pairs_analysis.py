@@ -20,13 +20,13 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
-import pyarrow.parquet as pq  # noqa: E402
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from objectless_alife.metrics import neighbor_pair_count  # noqa: E402
 from objectless_alife.stats import load_final_step_metrics  # noqa: E402
+from scripts._common import load_final_snapshots  # noqa: E402
 
 DATA_DIR = PROJECT_ROOT / "data" / "stage_d"
 GRID_W, GRID_H = 20, 20
@@ -46,40 +46,6 @@ DEFAULT_BINS: list[tuple[int, int | None, str]] = [
 ]
 
 
-def _load_final_snapshots(
-    sim_log_path: Path,
-    rule_ids: set[str] | None = None,
-) -> dict[str, tuple[tuple[int, int, int, int], ...]]:
-    """Load final-step snapshots per rule_id from a simulation log."""
-    table = pq.read_table(
-        sim_log_path,
-        columns=["rule_id", "step", "agent_id", "x", "y", "state"],
-    )
-    rows = table.to_pylist()
-
-    max_steps: dict[str, int] = {}
-    for row in rows:
-        rid = row["rule_id"]
-        if rule_ids is not None and rid not in rule_ids:
-            continue
-        step = int(row["step"])
-        if rid not in max_steps or step > max_steps[rid]:
-            max_steps[rid] = step
-
-    snapshots: dict[str, list[tuple[int, int, int, int]]] = {}
-    for row in rows:
-        rid = row["rule_id"]
-        if rule_ids is not None and rid not in rule_ids:
-            continue
-        if int(row["step"]) != max_steps.get(rid, -1):
-            continue
-        snapshots.setdefault(rid, []).append(
-            (int(row["agent_id"]), int(row["x"]), int(row["y"]), int(row["state"]))
-        )
-
-    return {rid: tuple(agents) for rid, agents in snapshots.items() if agents}
-
-
 def assign_bin(n_pairs: int, bins: list[tuple[int, int | None, str]]) -> str | None:
     """Return the bin label for *n_pairs*, or None if out of range."""
     for lo, hi, label in bins:
@@ -97,7 +63,12 @@ def bootstrap_median_ci_single(
     n_bootstrap: int,
     rng: random.Random,
 ) -> tuple[float, float]:
-    """Percentile bootstrap 95 % CI for the median of *values*."""
+    """Percentile bootstrap 95 % CI for the median of *values*.
+
+    Returns ``(nan, nan)`` when *values* is empty.
+    """
+    if not values:
+        return float("nan"), float("nan")
     n = len(values)
     medians: list[float] = []
     for _ in range(n_bootstrap):
@@ -105,7 +76,7 @@ def bootstrap_median_ci_single(
         medians.append(statistics.median(sample))
     medians.sort()
     lo_idx = max(0, int(n_bootstrap * 0.025))
-    hi_idx = min(n_bootstrap - 1, int(n_bootstrap * 0.975) - 1)
+    hi_idx = min(n_bootstrap - 1, int(n_bootstrap * 0.975))
     return medians[lo_idx], medians[hi_idx]
 
 
@@ -189,6 +160,7 @@ def _plot(
 
 
 def main(argv: list[str] | None = None) -> None:
+    """Run the MI vs n_pairs analysis across all conditions and save the figure."""
     parser = argparse.ArgumentParser(description="MI vs neighbor-pair-count analysis")
     parser.add_argument("--output-dir", type=str, default="paper/figures/")
     parser.add_argument("--seed", type=int, default=42)
@@ -206,7 +178,7 @@ def main(argv: list[str] | None = None) -> None:
         metrics_path = DATA_DIR / cond_dir / "logs" / "metrics_summary.parquet"
 
         # Load final-step snapshots and compute pair counts
-        snapshots = _load_final_snapshots(sim_log_path)
+        snapshots = load_final_snapshots(sim_log_path)
         pair_counts: dict[str, int] = {}
         for rid, snap in snapshots.items():
             pair_counts[rid] = neighbor_pair_count(snap, GRID_W, GRID_H)

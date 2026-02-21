@@ -44,16 +44,35 @@ def test_compute_bin_stats_smoke():
     assert result["\u226513"]["n"] == 1
 
 
-def test_figure_created(tmp_path: Path):
-    import matplotlib
+def test_bootstrap_median_ci_single_empty():
+    """bootstrap_median_ci_single returns (nan, nan) for empty input."""
+    import math
 
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
+    rng = random.Random(42)
+    lo, hi = module.bootstrap_median_ci_single([], n_bootstrap=100, rng=rng)
+    assert math.isnan(lo)
+    assert math.isnan(hi)
 
-    # Create a minimal figure to verify the output path works
-    fig, ax = plt.subplots()
-    ax.bar([0], [1])
+
+def test_compute_bin_stats_empty():
+    """compute_bin_stats with empty data returns an empty dict."""
+    rng = random.Random(42)
+    result = module.compute_bin_stats([], BINS, n_bootstrap=10, rng=rng)
+    assert result == {}
+
+
+def test_plot_creates_file(tmp_path: Path):
+    """_plot creates a non-empty PDF file at the given path."""
+    all_stats = {
+        "Phase 2": {
+            "1\u20133": {"median": 0.1, "ci_low": 0.05, "ci_high": 0.15, "n": 5},
+            "4\u20136": {"median": 0.2, "ci_low": 0.1, "ci_high": 0.3, "n": 5},
+        },
+        "Control": {
+            "1\u20133": {"median": 0.05, "ci_low": 0.02, "ci_high": 0.08, "n": 5},
+        },
+    }
     out = tmp_path / "figP1_mi_vs_n_pairs.pdf"
-    fig.savefig(str(out), bbox_inches="tight")
-    plt.close(fig)
+    module._plot(all_stats, BINS, out)
     assert out.exists()
+    assert out.stat().st_size > 0

@@ -16,48 +16,15 @@ import statistics
 import sys
 from pathlib import Path
 
-import pyarrow.parquet as pq
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from objectless_alife.metrics import shuffle_null_mi  # noqa: E402
 from objectless_alife.run_search import select_top_rules_by_delta_mi  # noqa: E402
+from scripts._common import load_final_snapshots  # noqa: E402
 
 DATA_DIR = PROJECT_ROOT / "data" / "stage_d"
-
-
-def _load_final_snapshots(
-    sim_log_path: Path, rule_ids: set[str]
-) -> dict[str, tuple[tuple[int, int, int, int], ...]]:
-    """Load final-step snapshots for given rule_ids from a simulation log."""
-    table = pq.read_table(
-        sim_log_path,
-        columns=["rule_id", "step", "agent_id", "x", "y", "state"],
-    )
-    rows = table.to_pylist()
-
-    max_steps: dict[str, int] = {}
-    for row in rows:
-        rid = row["rule_id"]
-        if rid not in rule_ids:
-            continue
-        step = int(row["step"])
-        if rid not in max_steps or step > max_steps[rid]:
-            max_steps[rid] = step
-
-    snapshots: dict[str, list[tuple[int, int, int, int]]] = {rid: [] for rid in rule_ids}
-    for row in rows:
-        rid = row["rule_id"]
-        if rid not in rule_ids:
-            continue
-        if int(row["step"]) != max_steps[rid]:
-            continue
-        snapshots[rid].append(
-            (int(row["agent_id"]), int(row["x"]), int(row["y"]), int(row["state"]))
-        )
-
-    return {rid: tuple(agents) for rid, agents in snapshots.items() if agents}
+DEFAULT_N_SHUFFLES = 200
 
 
 def run_convergence_analysis(
@@ -110,7 +77,7 @@ def plot_convergence(
         alpha=0.25,
         color="steelblue",
     )
-    ax.axvline(200, linestyle="--", color="grey", linewidth=1, label="default")
+    ax.axvline(DEFAULT_N_SHUFFLES, linestyle="--", color="grey", linewidth=1, label="default")
     ax.set_xscale("log")
     ax.set_xlabel("Number of Shuffles (N)")
     ax.set_ylabel("Mean Shuffle-Null MI (bits)")
@@ -124,6 +91,7 @@ def plot_convergence(
 
 
 def main(argv: list[str] | None = None) -> None:
+    """Run the shuffle-null MI convergence analysis and save the output figure."""
     parser = argparse.ArgumentParser(description="Shuffle-null MI convergence analysis")
     parser.add_argument("--top-k", type=int, default=50, help="Number of top rules to use")
     parser.add_argument(
@@ -142,7 +110,7 @@ def main(argv: list[str] | None = None) -> None:
 
     rule_ids = {f"phase2_rs{s}_ss{s}" for s in top_seeds}
     print("Loading final-step snapshots...")
-    snapshots = _load_final_snapshots(sim_log_path, rule_ids)
+    snapshots = load_final_snapshots(sim_log_path, rule_ids)
     print(f"  Loaded {len(snapshots)} snapshots")
 
     n_values = [10, 25, 50, 100, 200, 500]
