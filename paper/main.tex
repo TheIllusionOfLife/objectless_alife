@@ -431,8 +431,8 @@ reported in the supplementary material.}
 \end{table*}
 
 The control condition, despite having 100-entry tables (equal to Phase~2),
-produces zero median excess MI---demonstrating that table size alone is insufficient.
-Phase~2 is the only rule-based condition with nonzero median excess MI,
+produces zero median $\Delta\mathrm{MI}$---demonstrating that table size alone is insufficient.
+Phase~2 is the only rule-based condition with nonzero median $\Delta\mathrm{MI}$,
 driven by access to neighbor state information
 (Table~\ref{tab:stats}; bootstrap 95\% CI excludes zero).
 
@@ -595,7 +595,11 @@ coordination patterns:
 
 This taxonomy is based on qualitative inspection; formal feature-based
 clustering is available in the code repository
-(\texttt{scripts/phenotype\_taxonomy.py}).
+(\texttt{scripts/phenotype\_taxonomy.py}), which uses the features
+$\Delta\mathrm{MI}$, same-state adjacency fraction, state entropy,
+and predictability (Hamming) with deterministic thresholds
+($\Delta\mathrm{MI}>0.12$, adjacency $>0.60$, entropy $<0.30$)
+to assign each rule to one of four archetypes.
 
 \subsection{Statistical Significance}
 
@@ -647,7 +651,7 @@ Our central finding is that the \emph{content} of observation---specifically,
 access to neighbor state information---is the primary driver of emergent spatial
 coordination. This holds even when controlling for rule table size (the control
 condition). With shuffle-null-calibrated MI, Phase~2 is the
-only rule-based condition achieving nonzero median excess MI, while
+only rule-based condition achieving nonzero median $\Delta\mathrm{MI}$, while
 both Phase~1 and Control fall to zero---making the qualitative separation
 between observation conditions unambiguous.
 The same-state adjacency fraction (Table~\ref{tab:mi_summary}) provides
@@ -657,7 +661,7 @@ expectation ($\approx 0.25$ for 4 equiprobable states), confirming
 local coordination.  Moran's $I$ (reported in the supplementary
 material) is a secondary indicator, as it treats categorical states as
 numeric; nonetheless, it reveals that the Control condition exhibits the
-strongest spatial clustering (median $I = 0.124$) despite zero excess MI,
+strongest spatial clustering (median $I = 0.124$) despite zero $\Delta\mathrm{MI}$,
 while Phase~2's near-zero median $I$ ($-0.020$) indicates that its
 coordination operates at the local neighbor level rather than through
 large-scale spatial clustering.

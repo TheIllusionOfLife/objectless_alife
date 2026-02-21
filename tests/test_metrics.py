@@ -12,6 +12,7 @@ from objectless_alife.metrics import (
     fixed_marginal_null_mi,
     morans_i_occupied,
     neighbor_mutual_information,
+    neighbor_pair_count,
     neighbor_transfer_entropy,
     normalized_hamming_distance,
     phase_transition_max_delta,
@@ -317,6 +318,31 @@ def test_block_shuffle_null_mi_empty() -> None:
     """Empty snapshot → 0.0."""
     result = block_shuffle_null_mi((), 5, 5, block_size=2, n_shuffles=20, rng=random.Random(0))
     assert result == 0.0
+
+
+def test_neighbor_pair_count_empty_snapshot() -> None:
+    """Empty snapshot → 0 pairs."""
+    assert neighbor_pair_count((), 5, 5) == 0
+
+
+def test_neighbor_pair_count_single_agent() -> None:
+    """Single agent has no neighbors → 0 pairs."""
+    snapshot = ((0, 2, 2, 1),)
+    assert neighbor_pair_count(snapshot, 5, 5) == 0
+
+
+def test_neighbor_pair_count_toroidal_wrap() -> None:
+    """Two agents adjacent only via toroidal wrap are counted as a pair."""
+    # Agent at (0,0) and agent at (4,0) are adjacent via wrap on a 5x5 grid
+    snapshot = ((0, 0, 0, 1), (1, 4, 0, 2))
+    assert neighbor_pair_count(snapshot, 5, 5) == 1
+
+
+def test_neighbor_pair_count_known_grid() -> None:
+    """Three agents forming an L-shape have exactly 2 pairs."""
+    # (0,0)-(1,0) adjacent; (1,0)-(1,1) adjacent; (0,0)-(1,1) not adjacent
+    snapshot = ((0, 0, 0, 1), (1, 1, 0, 2), (2, 1, 1, 3))
+    assert neighbor_pair_count(snapshot, 5, 5) == 2
 
 
 def test_block_shuffle_null_mi_deterministic() -> None:

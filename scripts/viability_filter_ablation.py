@@ -23,7 +23,7 @@ PHASE_LABELS = {
 }
 
 
-def _excess_from_table(table: pa.Table) -> dict[str, float]:
+def _delta_mi_from_table(table: pa.Table) -> dict[str, float]:
     excess = pc.cast(table.column("delta_mi"), pa.float64(), safe=False)
     return {
         str(rule_id): float(value)
@@ -68,10 +68,10 @@ def _summarize_dataset(data_dir: Path) -> dict[str, dict[str, float | int]]:
             )
             continue
         table = load_final_step_metrics(metrics_path)
-        excess_map = _excess_from_table(table)
+        delta_mi_map = _delta_mi_from_table(table)
         surv_map = _phase_survival_map(runs_path, phase)
-        all_vals = list(excess_map.values())
-        survived_vals = [value for rid, value in excess_map.items() if surv_map.get(rid, False)]
+        all_vals = list(delta_mi_map.values())
+        survived_vals = [value for rid, value in delta_mi_map.items() if surv_map.get(rid, False)]
         all_q = _quantiles(all_vals)
         surv_q = _quantiles(survived_vals)
         summary[label] = {

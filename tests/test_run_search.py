@@ -31,7 +31,7 @@ from objectless_alife.run_search import (
     run_experiment,
     run_halt_window_sweep,
     run_multi_seed_robustness,
-    select_top_rules_by_excess_mi,
+    select_top_rules_by_delta_mi,
 )
 from objectless_alife.world import WorldConfig
 
@@ -812,8 +812,8 @@ def test_delta_mi_can_be_negative(tmp_path: Path) -> None:
             assert val is None or isinstance(val, float)
 
 
-def test_select_top_rules_by_excess_mi(tmp_path: Path) -> None:
-    """select_top_rules_by_excess_mi returns top-K rule seeds by MI_excess."""
+def test_select_top_rules_by_delta_mi(tmp_path: Path) -> None:
+    """select_top_rules_by_delta_mi returns top-K rule seeds by delta_mi."""
     # Run a small experiment to generate data
     run_experiment(
         ExperimentConfig(
@@ -826,7 +826,7 @@ def test_select_top_rules_by_excess_mi(tmp_path: Path) -> None:
     )
     metrics_path = tmp_path / "phase_2" / "logs" / "metrics_summary.parquet"
     rules_dir = tmp_path / "phase_2" / "rules"
-    top = select_top_rules_by_excess_mi(metrics_path, rules_dir, top_k=3)
+    top = select_top_rules_by_delta_mi(metrics_path, rules_dir, top_k=3)
     assert len(top) <= 3
     assert all(isinstance(seed, int) for seed in top)
 
@@ -861,6 +861,7 @@ def test_multi_seed_robustness_output_schema(tmp_path: Path) -> None:
         "neighbor_mutual_information",
         "mi_shuffle_null",
         "delta_mi",
+        "n_pairs",
     }
     assert expected_cols.issubset(table.column_names)
     assert table.num_rows == 2 * 3  # 2 rules x 3 seeds
@@ -976,6 +977,7 @@ def test_halt_window_sweep_output_schema(tmp_path: Path) -> None:
         "halt_window",
         "survived",
         "delta_mi",
+        "n_pairs",
         "enable_viability_filters",
     }
     assert expected_cols.issubset(table.column_names)

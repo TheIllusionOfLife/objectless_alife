@@ -18,7 +18,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 
 from objectless_alife.metrics import neighbor_transfer_entropy, transfer_entropy_shuffle_null
-from objectless_alife.run_search import select_top_rules_by_excess_mi
+from objectless_alife.run_search import select_top_rules_by_delta_mi
 from objectless_alife.world import WorldConfig
 
 _DEFAULT_WORLD = WorldConfig()
@@ -111,7 +111,7 @@ def main(argv: list[str] | None = None) -> None:
 
     p2_metrics = data_dir / "phase_2" / "logs" / "metrics_summary.parquet"
     p2_rules = data_dir / "phase_2" / "rules"
-    top_seeds = select_top_rules_by_excess_mi(p2_metrics, p2_rules, top_k=args.top_k)
+    top_seeds = select_top_rules_by_delta_mi(p2_metrics, p2_rules, top_k=args.top_k)
     top_seed_set = set(top_seeds)
 
     control_log = data_dir / "control" / "logs" / "simulation_log.parquet"

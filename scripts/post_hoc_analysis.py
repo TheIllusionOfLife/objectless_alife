@@ -36,7 +36,7 @@ from objectless_alife.metrics import (  # noqa: E402
 from objectless_alife.run_search import (  # noqa: E402
     HaltWindowSweepConfig,
     run_halt_window_sweep,
-    select_top_rules_by_excess_mi,
+    select_top_rules_by_delta_mi,
 )
 
 # ---------------------------------------------------------------------------
@@ -369,7 +369,7 @@ def main() -> None:
 
     # Step 1: Get top-50 P2 seeds
     print("\nExtracting top-50 Phase 2 rule seeds...")
-    top_seeds = select_top_rules_by_excess_mi(P2_METRICS, P2_RULES, top_k=50)
+    top_seeds = select_top_rules_by_delta_mi(P2_METRICS, P2_RULES, top_k=50)
     print(f"  Found {len(top_seeds)} seeds")
 
     # Step 2: Load snapshots for top-50 P2 rules

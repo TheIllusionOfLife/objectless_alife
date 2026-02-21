@@ -29,7 +29,7 @@ from objectless_alife.aggregation import (  # noqa: F401
     run_experiment,
     run_halt_window_sweep,
     run_multi_seed_robustness,
-    select_top_rules_by_excess_mi,
+    select_top_rules_by_delta_mi,
 )
 from objectless_alife.config import (  # noqa: F401
     MAX_EXPERIMENT_WORK_UNITS,

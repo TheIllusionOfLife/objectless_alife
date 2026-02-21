@@ -2,7 +2,7 @@
 
 Contains higher-level experiment drivers (``run_experiment``,
 ``run_density_sweep``, ``run_multi_seed_robustness``,
-``run_halt_window_sweep``, ``select_top_rules_by_excess_mi``) and the
+``run_halt_window_sweep``, ``select_top_rules_by_delta_mi``) and the
 internal aggregation helpers they share.
 """
 
@@ -589,14 +589,14 @@ def run_experiment(config: ExperimentConfig) -> list[SimulationResult]:
     return all_results
 
 
-def select_top_rules_by_excess_mi(
+def select_top_rules_by_delta_mi(
     metrics_path: Path,
     rules_dir: Path,
     top_k: int = 50,
 ) -> list[int]:
-    """Select top-K rule seeds by MI_excess from existing experiment data.
+    """Select top-K rule seeds by delta_mi from existing experiment data.
 
-    Returns a list of rule seeds sorted by descending MI_excess.
+    Returns a list of rule seeds sorted by descending delta_mi.
     Only includes surviving rules.
     """
     metrics_file = pq.ParquetFile(metrics_path)
