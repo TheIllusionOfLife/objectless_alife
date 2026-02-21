@@ -552,6 +552,53 @@ is intentionally rendered as N/A (non-identifiable correlation), not as a
 numeric estimate.
 
 %% =========================================================================
+%% O. SHUFFLE-NULL CONVERGENCE
+%% =========================================================================
+\section{Shuffle-Null Convergence}
+\label{app:shuffle_convergence}
+
+To verify that $N=200$ shuffles is sufficient for a stable noise-floor estimate,
+we evaluated the mean shuffle-null MI ($\overline{\mathrm{MI}}_\mathrm{null}$)
+for the top-50 Phase~2 survivors across $N \in \{10, 25, 50, 100, 200, 500\}$
+shuffles per rule. Figure~\ref{fig:shuffle_convergence} shows that the estimate
+stabilises by $N \approx 50$ and changes by less than 0.003~bits between $N=100$
+and $N=500$, confirming that $N=200$ provides an ample noise-floor estimate with
+comfortable margin.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/figO1_shuffle_null_convergence.pdf}
+\caption{Shuffle-null MI as a function of shuffle count $N$ for the top-50
+Phase~2 survivors. Solid line: mean across rules; shaded band: $\pm 1$ SD.
+Dashed vertical line marks the default $N=200$ used throughout.}
+\label{fig:shuffle_convergence}
+\end{figure}
+
+%% =========================================================================
+%% P. MUTUAL INFORMATION AS A FUNCTION OF PAIR COUNT
+%% =========================================================================
+\section{Mutual Information as a Function of Pair Count}
+\label{app:mi_vs_n_pairs}
+
+A potential confound is that Phase~2 rules produce more occupied adjacent pairs
+($n_\mathrm{pairs}$), which could mechanically increase MI estimates even under
+independence. To assess robustness, we computed median $\Delta\mathrm{MI}$ within
+$n_\mathrm{pairs}$ bins $\{1\text{--}3,\;4\text{--}6,\;7\text{--}12,\;\geq 13\}$
+across all four conditions (Figure~\ref{fig:mi_vs_n}). Phase~2 shows higher median
+$\Delta\mathrm{MI}$ than Control and Phase~1 in every bin; it also surpasses Random
+Walk in the 4--6, 7--12, and $\geq\!13$ bins (where Phase~2 rules predominantly
+reside), confirming that the advantage is not an artifact of pair-count differences.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/figP1_mi_vs_n_pairs.pdf}
+\caption{Median $\Delta\mathrm{MI}$ (with 95\% bootstrap CI) stratified by
+$n_\mathrm{pairs}$ bin for all four conditions. Phase~2's advantage persists
+within pair-count strata, ruling out pair-count as a confounding variable.}
+\label{fig:mi_vs_n}
+\end{figure}
+
+%% =========================================================================
 %% BIBLIOGRAPHY
 %% =========================================================================
 \footnotesize
