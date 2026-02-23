@@ -255,7 +255,7 @@ These filters are applied identically across all four conditions and all density
 levels.  Any surviving rule may exhibit any spatial pattern, MI value, or action
 distribution; the filters exclude only dynamical trivialism (complete stasis or
 indistinguishable agents).
-Termination modes differ across conditions (Supplementary~\S{}T): Control is disproportionately terminated by state-uniformity, consistent with rules driving all agents to the same state when neighbor-state information is unavailable. Phase~1 and Phase~2 show more balanced halt/uniformity ratios.
+Termination modes differ across conditions (Supplementary~\S{}T): Phase~1 and Phase~2 show balanced halt/state-uniformity ratios (18.6\%/10.0\% and 18.3\%/7.0\% respectively); Control's non-survival rate is substantially higher (55.5\%), though its termination mode is not separately logged (N/R in \S{}T), consistent with the step-clock driving agents toward state uniformity.
 No fitness function, novelty metric, complexity threshold, or behavioral
 criterion is used at any stage.
 Across 5{,}000 rules per condition, survival rates are:
@@ -330,7 +330,14 @@ permuted; $\hat{I}_{\mathrm{MM}}$ is computed for each of $N=200$ shuffles;
 $\overline{I}_{\mathrm{shuffle}}$ is the mean over those shuffles.
 The Miller-Madow correction is applied independently to both the observed MI
 and each shuffle replicate before averaging.
-All MI values are in bits (base-2 logarithm). The shuffle-null variability ($\pm 1$~SD across the 200 shuffles) is reported in Supplementary~\S{}O; convergence is stable by $N=50$ shuffles with $<\!0.003$~bits change to $N=500$. Because states are permuted among fixed occupied positions, the shuffle preserves both pair-count and the marginal state-frequency distribution; $\Delta\mathrm{MI}$ therefore controls for global state-composition simultaneously with pair-count bias.
+All MI values are in bits (base-2 logarithm).
+The shuffle-null variability ($\pm 1$~SD across the 200 shuffles) is reported
+in Supplementary~\S{}O; convergence is stable by $N=50$ shuffles with
+$<\!0.003$~bits change to $N=500$.
+Because states are permuted among fixed occupied positions, the shuffle
+preserves both pair-count and the marginal state-frequency distribution;
+$\Delta\mathrm{MI}$ therefore controls for global state-composition
+simultaneously with pair-count bias.
 In particular, the random walk's high raw MI
 ($\approx 0.91$~bits) is entirely attributable to pair-count bias:
 $\Delta\mathrm{MI}$ near zero (0.050~bits, within the noise floor
@@ -605,7 +612,7 @@ and predictability (Hamming) with deterministic thresholds
 ($\Delta\mathrm{MI}>0.12$, adjacency $>0.60$, entropy $<0.30$)
 to assign each rule to one of four archetypes.
 
-The median $\Delta\mathrm{MI}$ of 0.096~bits corresponds to a 6.7\% reduction in neighbor-state uncertainty ($\Delta\mathrm{MI}/H_{\mathrm{state}} = 0.096/1.438$; empirical Phase~2 median state entropy). The top-performing rules ($\Delta\mathrm{MI} \approx 2$~bits) achieve near-complete neighbor-state predictability, consistent with frozen anti-correlated boundary structures (same-state adjacency fraction $\approx 0$, Hamming predictability $\approx 0$). Across the full Phase~2 survivor distribution, high-$\Delta\mathrm{MI}$ rules are dominated by frozen boundary patterns; dynamic state-propagation is more prevalent in the median-$\Delta\mathrm{MI}$ range (Supplementary~\S{}Q, Fig.~Q1). Archetype frequencies stratified by $\Delta\mathrm{MI}$ quartile are reported in Supplementary~\S{}Q.
+Among Phase~2 survivors, the median $\Delta\mathrm{MI}$ of 0.142~bits corresponds to a 9.9\% reduction in neighbor-state uncertainty ($\Delta\mathrm{MI}/H_{\mathrm{state}} = 0.142/1.438$; empirical Phase~2 survivor median state entropy). The top-performing rules ($\Delta\mathrm{MI} \approx 2$~bits) achieve near-complete neighbor-state predictability, consistent with frozen anti-correlated boundary structures (same-state adjacency fraction $\approx 0$, Hamming predictability $\approx 0$). Across the full Phase~2 survivor distribution, high-$\Delta\mathrm{MI}$ rules are dominated by frozen boundary patterns; dynamic state-propagation is more prevalent in the median-$\Delta\mathrm{MI}$ range (Supplementary~\S{}Q, Fig.~Q1). Archetype frequencies stratified by $\Delta\mathrm{MI}$ quartile are reported in Supplementary~\S{}Q.
 
 \subsection{Statistical Significance}
 

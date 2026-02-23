@@ -96,7 +96,7 @@ def _make_synthetic_metrics_multi_step(path: Path, n_rules: int = 5) -> None:
                 }
             )
         # Add the final step row
-        if max_step not in range(0, max_step + 1, 50):
+        if max_step % 50 != 0:
             rows.append(
                 {
                     "rule_id": f"ctrl_rule_{i}",
@@ -172,6 +172,8 @@ def test_termination_breakdown_smoke(tmp_path: Path) -> None:
 
 def test_population_mi_timeseries_smoke() -> None:
     """compute_population_delta_mi_timeseries exists and returns expected structure."""
+    import math
+
     from scripts.population_mi_timeseries import compute_population_delta_mi_timeseries
 
     # Create tiny synthetic snapshots: {rule_id: {step: ((aid, x, y, state), ...)}}
@@ -196,6 +198,36 @@ def test_population_mi_timeseries_smoke() -> None:
         assert "q25" in result[t]
         assert "q75" in result[t]
         assert isinstance(result[t]["median"], float)
+
+    # Degenerate: empty snapshots dict → all timestep entries with NaN
+    result_empty = compute_population_delta_mi_timeseries(
+        {}, timesteps=[0, 10], n_shuffles=5, seed=42
+    )
+    assert set(result_empty.keys()) == {0, 10}
+    for t in (0, 10):
+        assert "median" in result_empty[t]
+        assert "q25" in result_empty[t]
+        assert "q75" in result_empty[t]
+        assert math.isnan(result_empty[t]["median"])
+
+    # Degenerate: rule with empty steps dict → handled gracefully
+    result_empty_rule = compute_population_delta_mi_timeseries(
+        {"rule_empty": {}}, timesteps=[0, 10], n_shuffles=5, seed=42
+    )
+    assert set(result_empty_rule.keys()) == {0, 10}
+    for t in (0, 10):
+        assert math.isnan(result_empty_rule[t]["median"])
+
+    # Degenerate: single-agent snapshot → returns valid float (even if MI is 0)
+    result_single = compute_population_delta_mi_timeseries(
+        {"rule_single": {0: ((0, 0, 0, 1),), 10: ((0, 0, 0, 2),)}},
+        timesteps=[0, 10],
+        n_shuffles=5,
+        seed=42,
+    )
+    assert set(result_single.keys()) == {0, 10}
+    for t in (0, 10):
+        assert isinstance(result_single[t]["median"], float)
 
 
 def test_random_survivor_multi_seed_smoke() -> None:

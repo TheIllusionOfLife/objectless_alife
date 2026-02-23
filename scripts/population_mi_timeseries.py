@@ -133,12 +133,10 @@ def compute_population_delta_mi_timeseries(
             if t in steps_dict:
                 snap = steps_dict[t]
             else:
-                last_step = (
-                    max(s for s in available_steps if s <= t)
-                    if any(s <= t for s in available_steps)
-                    else available_steps[0]
-                )
-                snap = steps_dict[last_step]
+                steps_before_t = [s for s in available_steps if s <= t]
+                if not steps_before_t:
+                    continue  # No snapshot at or before t; skip this rule for this timestep
+                snap = steps_dict[max(steps_before_t)]
 
             rng = random.Random(seed + i * 1000 + t)
             mi = neighbor_mutual_information(snap, GRID_W, GRID_H)
@@ -154,7 +152,7 @@ def compute_population_delta_mi_timeseries(
                 "q75": sorted_vals[min(n - 1, int(n * 0.75))],
             }
         else:
-            result[t] = {"median": 0.0, "q25": 0.0, "q75": 0.0}
+            result[t] = {"median": float("nan"), "q25": float("nan"), "q75": float("nan")}
 
     return result
 
