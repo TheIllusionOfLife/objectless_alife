@@ -26,6 +26,12 @@ output/
 data/post_hoc/*
 !data/post_hoc/pr26_followups/
 !data/post_hoc/pr26_followups/**
+!data/post_hoc/termination_breakdown/
+!data/post_hoc/termination_breakdown/**
+!data/post_hoc/archetype_full/
+!data/post_hoc/archetype_full/**
+!data/post_hoc/population_mi_timeseries/
+!data/post_hoc/population_mi_timeseries/**
 
 # LaTeX artifacts
 *.aux

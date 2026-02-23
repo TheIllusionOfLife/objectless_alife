@@ -1,0 +1,54 @@
+{
+  "n_survivors": 3735,
+  "median_state_entropy": 1.4384323354415096,
+  "median_delta_mi": 0.1420517926276341,
+  "predictability_fraction_median": 0.09875458798277988,
+  "overall_counts": {
+    "polarized_cluster": 0,
+    "frozen_patch": 47,
+    "mixed_turbulent": 100,
+    "low_signal": 3588
+  },
+  "quartile_archetype_counts": {
+    "q1_0_25": {
+      "delta_mi_range": [
+        -0.980796125919816,
+        -0.0084902599577928
+      ],
+      "polarized_cluster": 0,
+      "frozen_patch": 0,
+      "mixed_turbulent": 0,
+      "low_signal": 934
+    },
+    "q2_25_50": {
+      "delta_mi_range": [
+        -0.0084902599577928,
+        0.1420517926276341
+      ],
+      "polarized_cluster": 0,
+      "frozen_patch": 40,
+      "mixed_turbulent": 5,
+      "low_signal": 889
+    },
+    "q3_50_75": {
+      "delta_mi_range": [
+        0.1420517926276341,
+        0.43684506750582813
+      ],
+      "polarized_cluster": 0,
+      "frozen_patch": 4,
+      "mixed_turbulent": 37,
+      "low_signal": 892
+    },
+    "q4_75_100": {
+      "delta_mi_range": [
+        0.43684506750582813,
+        1.839206971402303
+      ],
+      "polarized_cluster": 0,
+      "frozen_patch": 3,
+      "mixed_turbulent": 58,
+      "low_signal": 873
+    }
+  }
+}

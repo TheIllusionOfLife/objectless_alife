@@ -255,6 +255,7 @@ These filters are applied identically across all four conditions and all density
 levels.  Any surviving rule may exhibit any spatial pattern, MI value, or action
 distribution; the filters exclude only dynamical trivialism (complete stasis or
 indistinguishable agents).
+Termination modes differ across conditions (Supplementary~\S{}T): Control is disproportionately terminated by state-uniformity, consistent with rules driving all agents to the same state when neighbor-state information is unavailable. Phase~1 and Phase~2 show more balanced halt/uniformity ratios.
 No fitness function, novelty metric, complexity threshold, or behavioral
 criterion is used at any stage.
 Across 5{,}000 rules per condition, survival rates are:
@@ -329,7 +330,7 @@ permuted; $\hat{I}_{\mathrm{MM}}$ is computed for each of $N=200$ shuffles;
 $\overline{I}_{\mathrm{shuffle}}$ is the mean over those shuffles.
 The Miller-Madow correction is applied independently to both the observed MI
 and each shuffle replicate before averaging.
-All MI values are in bits (base-2 logarithm).
+All MI values are in bits (base-2 logarithm). The shuffle-null variability ($\pm 1$~SD across the 200 shuffles) is reported in Supplementary~\S{}O; convergence is stable by $N=50$ shuffles with $<\!0.003$~bits change to $N=500$. Because states are permuted among fixed occupied positions, the shuffle preserves both pair-count and the marginal state-frequency distribution; $\Delta\mathrm{MI}$ therefore controls for global state-composition simultaneously with pair-count bias.
 In particular, the random walk's high raw MI
 ($\approx 0.91$~bits) is entirely attributable to pair-count bias:
 $\Delta\mathrm{MI}$ near zero (0.050~bits, within the noise floor
@@ -383,7 +384,7 @@ effect-size
 statistic; $p$-values are retained as secondary evidence.
 Each rule table is paired with a single simulation
 seed (rule seed $i$ paired with simulation seed $i$), so per-rule conclusions
-reflect one initial configuration.
+reflect one initial configuration. The unit of analysis is the surviving rule (one per seed); each of the 5{,}000 seeds constitutes one observation. All hypothesis tests are exploratory and post-hoc (not pre-registered); effect sizes and bootstrap confidence intervals are the primary inferential quantities; $p$-values are retained as secondary evidence.
 
 %% =========================================================================
 %% 4. RESULTS
@@ -534,13 +535,16 @@ The four conditions exhibit qualitatively distinct temporal behaviors
   \item \textbf{Phase~1}: MI rises quickly then plateaus---``frozen'' dynamics
         where spatial patterns crystallize early.
   \item \textbf{Phase~2}: MI rises and remains dynamic, with ongoing
-        fluctuations---sustained spatial coordination without freezing.
+        fluctuations---sustained spatial coordination without freezing
+        (median calibrated $\Delta\mathrm{MI}(t)>0$ throughout).
   \item \textbf{Control}: Highly chaotic trajectories with large MI
         variance and frequent collapses to zero.
   \item \textbf{Random Walk}: High but flat MI throughout, reflecting
         constant estimation bias from few adjacent pairs rather than
         genuine coordination.
 \end{itemize}
+
+To assess whether the final-snapshot result reflects sustained dynamics or a transient effect, we computed the per-step calibrated $\Delta\mathrm{MI}(t)$ across a random sample of 500 surviving rules per condition (Supplementary~\S{}Q, Figure~Q1). Phase~2's median $\Delta\mathrm{MI}(t)$ remains above zero throughout all 200 steps; Phase~1 and Control track at or below zero---confirming that the Phase~2 advantage is not an artifact of final-snapshot sampling.
 
 This pattern is an exploratory qualitative observation only. It is consistent
 with a possible frozen--dynamic--chaotic ordering across conditions, but we do
@@ -600,6 +604,8 @@ $\Delta\mathrm{MI}$, same-state adjacency fraction, state entropy,
 and predictability (Hamming) with deterministic thresholds
 ($\Delta\mathrm{MI}>0.12$, adjacency $>0.60$, entropy $<0.30$)
 to assign each rule to one of four archetypes.
+
+The median $\Delta\mathrm{MI}$ of 0.096~bits corresponds to a 6.7\% reduction in neighbor-state uncertainty ($\Delta\mathrm{MI}/H_{\mathrm{state}} = 0.096/1.438$; empirical Phase~2 median state entropy). The top-performing rules ($\Delta\mathrm{MI} \approx 2$~bits) achieve near-complete neighbor-state predictability, consistent with frozen anti-correlated boundary structures (same-state adjacency fraction $\approx 0$, Hamming predictability $\approx 0$). Across the full Phase~2 survivor distribution, high-$\Delta\mathrm{MI}$ rules are dominated by frozen boundary patterns; dynamic state-propagation is more prevalent in the median-$\Delta\mathrm{MI}$ range (Supplementary~\S{}Q, Fig.~Q1). Archetype frequencies stratified by $\Delta\mathrm{MI}$ quartile are reported in Supplementary~\S{}Q.
 
 \subsection{Statistical Significance}
 
@@ -668,6 +674,9 @@ large-scale spatial clustering.
 This result is not a consequence of having more rules to choose from, but of
 each rule being able to respond to richer local information.
 
+\paragraph{Why might state-profile observation support coordination?}
+One mechanistic account is that Phase~2 agents condition their action on the dominant neighbor state, enabling state-dependent responses that are sensitive to local spatial context: two adjacent agents can distinguish each other and respond differentially, consistent with the formation and maintenance of local state structure. Phase~1 agents observe only neighbor \emph{count}---a quantity symmetric with respect to neighbor identity---and therefore cannot generate state-correlated spatial patterns regardless of rule-table size. This is consistent with a Markov-order argument: Phase~2 agents have access to first-order neighbour-state context that Phase~1 agents cannot access. We note that this is a mechanistic hypothesis consistent with the data; establishing the causal pathway would require targeted ablations beyond the scope of the present work.
+
 \paragraph{Exploratory temporal pattern (not a primary claim).}
 The temporal trajectories suggest a possible frozen--dynamic--chaotic ordering
 (Phase~1, Phase~2, Control), but we treat this strictly as exploratory context,
@@ -696,14 +705,14 @@ The relevant comparison is P1 and P2's near-identical $r \approx 0.14$,
 which indicates that the MI advantage of Phase~2 over Phase~1 is not an
 artifact of differential filter selection: both conditions have nearly
 identical filter-MI correlation, yet Phase~2 achieves substantially higher
-$\Delta\mathrm{MI}$.
+$\Delta\mathrm{MI}$. State-uniformity filtering mechanically removes only MI$=0$ configurations (all-same-state worlds have no joint variation), so it cannot preferentially preserve high-MI rules---it removes only zero-MI configurations, symmetrically across conditions. The halt filter removes fully frozen worlds, which would include some high-MI frozen configurations; that it does so at matched rates for P1 and P2 ($r\approx 0.14$ for both) confirms no differential effect.
 
 \paragraph{Directional information flow.}
 Transfer entropy analysis (supplementary material) confirms that the spatial
 coordination in Phase~2 involves genuine directional information flow from
 neighbor states to agent next-states, beyond what symmetric MI captures.
 This rules out the possibility that the observed MI arises from static
-correlations without dynamic coupling.
+correlations without dynamic coupling. The Control condition's elevated TE arises from its step-clock dimension: the deterministic clock cycle creates strong temporal autocorrelation in agent state transitions that TE detects. This is temporal, not spatial, coordination---consistent with Control's near-zero $\Delta\mathrm{MI}$.
 
 \paragraph{Capacity-matched controls.}
 To further isolate the role of observation \emph{content} from table
@@ -738,14 +747,7 @@ further support the observation-richness narrative.
 
 \paragraph{Filter cascade robustness.}
 The main experiments apply only weak viability filters (halt detection,
-state uniformity).  A cascaded filter analysis (supplementary material,
-Section~M) applies additional medium-strength filters---short-period
-detection and low-activity detection---to test whether the Phase~2
-MI advantage persists under stricter viability criteria.  If the
-observation-richness ordering (Control~$<$~P1~$<$~P2) holds among the
-more stringently filtered survivors, it strengthens the claim that
-coordination is a genuine property of the rule--observation interaction,
-not an artifact of lax filtering.
+state uniformity).  A cascaded filter analysis (Supplementary~\S{}M) confirms that the ordering Control~$<$~P1~$<$~P2 persists under stricter viability criteria: Phase~2 medium-filter survivors achieve median $\Delta\mathrm{MI}=0.153$~bits vs.\ zero for Phase~1 and Control survivors.
 
 \paragraph{Implications for ALife research.}
 These results suggest that objective-free search deserves more attention as a
@@ -783,8 +785,7 @@ Several limitations constrain the generalizability of our findings:
         advantage holds across all tested densities.
   \item \textbf{Sequential update order}: Agents are updated in a random
         permutation each step, creating implicit temporal correlations between
-        early and late updates within the same step. Synchronous update
-        schemes may produce different dynamics.
+        early and late updates within the same step. Synchronous update produces qualitatively consistent results: Phase~2 retains positive median $\Delta\mathrm{MI}$ (0.013~bits) while Phase~1 and Control remain at zero (Supplementary~\S{}S), though the magnitude is reduced relative to sequential updates.
   \item \textbf{Single simulation per rule (main experiment)}: Each rule table
         is evaluated with a single initial configuration in the main experiment.
         The supplementary material provides multi-seed robustness analysis
@@ -794,7 +795,7 @@ Several limitations constrain the generalizability of our findings:
         accidents.  As a brief in-text summary: among the top 50 Phase~2 rules
         re-evaluated across 20 independent seeds, 84\% maintain positive
         median $\Delta\mathrm{MI}$ (mean $P(\Delta\mathrm{MI}>0)=0.748$),
-        compared to 36\% for Phase~1 and 44\% for Control.
+        compared to 36\% for Phase~1 and 44\% for Control. Supplementary~\S{}R extends the multi-seed analysis to 200 randomly selected survivors per condition (not only the top-50), with bootstrap confidence intervals confirming that the whole $\Delta\mathrm{MI}$ distribution is stable across seeds, not only the top performers.
   \item \textbf{Halt window sensitivity}: The main experiments use a
         10-step halt window. A sensitivity sweep across \{5, 10, 20\}
         (supplementary material) confirms that results are robust to

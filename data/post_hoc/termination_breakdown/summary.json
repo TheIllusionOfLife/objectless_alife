@@ -1,0 +1,33 @@
+{
+  "conditions": {
+    "phase_1": {
+      "n_survived": 3571,
+      "n_halt": 931,
+      "n_state_uniform": 498,
+      "n_total": 5000,
+      "full_dist_delta_mi": {
+        "median": 0.0,
+        "fraction_positive": 0.2864
+      }
+    },
+    "phase_2": {
+      "n_survived": 3735,
+      "n_halt": 916,
+      "n_state_uniform": 349,
+      "n_total": 5000,
+      "full_dist_delta_mi": {
+        "median": 0.0959168616288881,
+        "fraction_positive": 0.5802
+      }
+    },
+    "control": {
+      "n_survived": 2227,
+      "n_not_recorded": 2773,
+      "n_total": 5000,
+      "full_dist_delta_mi": {
+        "median": 0.0,
+        "fraction_positive": 0.1438
+      }
+    }
+  }
+}

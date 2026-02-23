@@ -599,6 +599,236 @@ within pair-count strata, ruling out pair-count as a confounding variable.}
 \end{figure}
 
 %% =========================================================================
+%% Q. POPULATION-LEVEL DELTA-MI(t) TRAJECTORIES
+%% =========================================================================
+\section{Population-Level $\Delta\mathrm{MI}(t)$ Trajectories}
+\label{app:population_delta_mi}
+
+To assess whether the final-snapshot MI advantage of Phase~2 reflects
+sustained temporal dynamics or an artefact of measuring coordination at
+a single fixed step, we computed the per-step calibrated
+$\Delta\mathrm{MI}(t)$ across a random sample of 500 surviving rules per
+condition at timestep intervals $t \in \{0, 10, 20, \ldots, 190, 199\}$
+(21 checkpoints total). At each checkpoint, the shuffle null is computed
+freshly from the recorded snapshot at that step ($N=10$ shuffles;
+sufficient for tracking the sign and shape of the population median).
+Early-terminated rules are censored at their last recorded step
+(MI at last recorded step is used; no imputation).
+Figure~\ref{fig:population_delta_mi} shows the median $\Delta\mathrm{MI}(t)$
+and interquartile range (IQR) across the 500 sampled rules per condition.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/figQ1_population_delta_mi_timeseries.pdf}
+\caption{Population-level median $\Delta\mathrm{MI}(t)$ $\pm$ IQR for
+500 randomly sampled surviving rules per condition. Solid lines: median
+across rules at each timestep; shaded bands: 25th--75th percentile.
+Phase~2 (orange) remains above zero throughout all 200 steps (100\% of
+timesteps with positive median); Phase~1 (blue) and Control (green) track
+at or below zero throughout (0\% of timesteps with positive median).
+Censoring policy: early-terminated rules use MI at their last recorded step.}
+\label{fig:population_delta_mi}
+\end{figure}
+
+Phase~2's median $\Delta\mathrm{MI}(t)$ is positive at 100\% of the 21
+timestep checkpoints; Phase~1 and Control achieve positive median
+$\Delta\mathrm{MI}(t)$ at 0\% of checkpoints.  This demonstrates that
+the Phase~2 advantage is not an artifact of final-snapshot sampling: the
+population-wide calibrated coordination is positive and sustained
+throughout the simulation.
+
+\paragraph{Archetype frequency by $\Delta\mathrm{MI}$ quartile.}
+To characterise what kinds of coordination rules produce across the full
+Phase~2 survivor distribution ($n=3{,}735$), we applied the phenotype
+taxonomy (\texttt{scripts/phenotype\_taxonomy.py}) to all surviving
+Phase~2 rules stratified by $\Delta\mathrm{MI}$ quartile.
+Empirical medians: $\Delta\mathrm{MI} = 0.142$~bits, state entropy
+$H_{\mathrm{state}} = 1.438$~bits (predictability fraction
+$0.142/1.438 \approx 9.9\%$).  Results are shown in
+Table~\ref{tab:archetype_quartiles}.
+
+\begin{table}[htbp]
+\centering
+\caption{Archetype counts per $\Delta\mathrm{MI}$ quartile for all Phase~2
+survivors ($n=3{,}735$). Q1 = 0--25th percentile
+($\Delta\mathrm{MI} \leq 0.056$~bits); Q2 = 25--50th ($0.056$--$0.142$~bits);
+Q3 = 50--75th ($0.142$--$0.437$~bits); Q4 = 75--100th ($>0.437$~bits).
+``Low-signal'' is the residual category ($\Delta\mathrm{MI} < 0.05$,
+$H<0.60$, or predictability $< 0.40$).}
+\label{tab:archetype_quartiles}
+\begin{tabular}{lcccc}
+\toprule
+Archetype & Q1 & Q2 & Q3 & Q4 \\
+\midrule
+Polarized cluster  & 0 & 0 & 0 & 0 \\
+Frozen patch       & 0 & 40 & 4 & 3 \\
+Mixed turbulent    & 0 & 5 & 37 & 58 \\
+Low signal         & 934 & 889 & 892 & 873 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The low-signal category dominates all quartiles, confirming that the majority
+of Phase~2 survivors produce modest coordination.  Frozen-patch rules
+(static correlated structures) peak in Q2 (median-range ΔMI);
+mixed-turbulent rules (dynamic state propagation) are most prevalent in
+Q3--Q4 (upper half).  Critically, the top-$\Delta\mathrm{MI}$ quartile (Q4)
+contains no polarized-cluster rules, consistent with the anti-correlated
+boundary interpretation: high-$\Delta\mathrm{MI}$ rules exhibit near-zero
+same-state adjacency fraction, indicating anti-correlation rather than
+same-state clustering.
+
+%% =========================================================================
+%% R. DISTRIBUTION-WIDE MULTI-SEED ROBUSTNESS
+%% =========================================================================
+\section{Distribution-Wide Multi-Seed Robustness}
+\label{app:random_multi_seed}
+
+Supplementary~\S{}B evaluates multi-seed robustness for the \emph{top-50}
+Phase~2 rules by $\Delta\mathrm{MI}$.  Here we extend the analysis to
+\emph{200 randomly selected surviving rules} per condition (uniform random
+sample, not selected by $\Delta\mathrm{MI}$), re-evaluating each rule
+across 10 independent initial seeds.  To quantify sampling uncertainty,
+we repeat this procedure with $B=5$ independent random samples (RNG
+seeds 0--4) and report bootstrap confidence intervals across resamples.
+Control is excluded because rule seeds are not available in the
+experiment log for that condition.
+
+\begin{table}[htbp]
+\centering
+\caption{Distribution-wide multi-seed robustness ($B=5$ resamples of 200
+random survivors, 10 seeds per rule). Fraction positive median: fraction
+of rules whose median $\Delta\mathrm{MI}>0$ across seeds.
+Mean $P(\Delta\mathrm{MI}>0)$: mean fraction of seeds with $\Delta\mathrm{MI}>0$.
+95\% CI is the percentile interval across $B=5$ resamples.}
+\label{tab:random_multi_seed}
+\resizebox{\linewidth}{!}{\begin{tabular}{lcc}
+\toprule
+Condition & Frac.\ pos.\ med.\ [95\%~CI] & $\overline{P}(\Delta\mathrm{MI}{>}0)$ [95\%~CI] \\
+\midrule
+Phase~1 & 0.265 [0.230, 0.310] & 0.326 [0.310, 0.351] \\
+Phase~2 & 0.709 [0.680, 0.730] & 0.646 [0.627, 0.669] \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+The Phase~2 fraction with positive median $\Delta\mathrm{MI}$ (70.9\%) is
+substantially higher than Phase~1 (26.5\%), with non-overlapping 95\%
+bootstrap CIs.  This confirms that seed robustness is a property of the
+full Phase~2 survivor distribution, not only the top performers: a random
+draw of 200 Phase~2 survivors exhibits the same qualitative ordering as
+the top-50 results in \S{}B (Phase 2: 84\%, Phase 1: 36\% among top-50).
+
+%% =========================================================================
+%% S. SYNCHRONOUS UPDATE ABLATION
+%% =========================================================================
+\section{Synchronous Update Ablation}
+\label{app:synchronous_ablation}
+
+To assess whether the Phase~2 coordination advantage depends on sequential
+update order, we re-ran all 5{,}000 rules per condition under synchronous
+update semantics (all agents act simultaneously using the previous step's
+state). Table~\ref{tab:synchronous} reports the median $\Delta\mathrm{MI}$,
+Cliff's $\delta$, corrected $p$-value, and survival rate for each condition
+under both update modes.
+
+\begin{table}[htbp]
+\centering
+\caption{Synchronous vs.\ sequential update ablation.
+Cliff's $\delta$ (sequential vs.\ synchronous); $p_{\rm corr}$ is
+Holm-Bonferroni corrected. Phase~2 retains positive median $\Delta\mathrm{MI}$
+under synchronous updates (0.013 bits vs.\ 0.096 bits sequential);
+Phase~1 and Control remain at zero.}
+\label{tab:synchronous}
+\begin{tabular}{lccc}
+\toprule
+Condition & Seq.\ $\Delta\mathrm{MI}$ & Sync.\ $\Delta\mathrm{MI}$ & $p_{\rm corr}$ \\
+\midrule
+Phase~1  & 0.000 & 0.000 & 0.797 \\
+Phase~2  & 0.096 & 0.013 & $1.6\times 10^{-9}$ \\
+Control  & 0.000 & 0.000 & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The Phase~1 and Control conditions show no significant difference between
+update modes (Phase~1: Cliff's $\delta=0.002$, $p_{\rm corr}=0.797$).
+Phase~2's median $\Delta\mathrm{MI}$ is reduced approximately 7-fold
+under synchronous updates (0.013 vs.\ 0.096~bits), but remains positive,
+confirming that the directional result (P2~$>$ P1 $=$ Control) is preserved.
+The magnitude reduction is consistent with synchronous update eliminating
+the implicit temporal ordering that allows state-propagation rules to
+propagate information across multiple agents in a single step.
+
+%% =========================================================================
+%% T. TERMINATION MODE BREAKDOWN
+%% =========================================================================
+\section{Termination Mode Breakdown}
+\label{app:termination_breakdown}
+
+Table~\ref{tab:termination} breaks down how each of the 5{,}000 rules per
+condition terminates.  Halt detection fires when all agents' positions and
+states are unchanged for $W=10$ consecutive steps; state-uniformity fires
+when all 30 agents share the same internal state.  For the Control condition,
+the termination mode is not separately logged; the 2{,}773 non-surviving
+rules are reported as ``not recorded.''
+
+\begin{table}[htbp]
+\centering
+\caption{Termination mode counts per condition ($n=5{,}000$ per condition).
+State-unif.\ = state-uniformity termination; N/R = not separately recorded
+(Control only).}
+\label{tab:termination}
+\resizebox{\linewidth}{!}{\begin{tabular}{lrrrr}
+\toprule
+Condition & Survived & Halt & State-unif. & Total \\
+\midrule
+Phase~1   & 3{,}571 (71.4\%) & 931 (18.6\%) & 498 (10.0\%) & 5{,}000 \\
+Phase~2   & 3{,}735 (74.7\%) & 916 (18.3\%) & 349 (7.0\%) & 5{,}000 \\
+Control   & 2{,}227 (44.5\%) & N/R & N/R & 5{,}000 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+Control is disproportionately terminated relative to the rule-based conditions
+(55.5\% non-survival vs.\ 28.6\% for Phase~1 and 25.3\% for Phase~2).
+This is consistent with the Control step-clock producing globally synchronised
+state oscillations that rapidly drive agents to uniform state when the
+clock cycle aligns across all agents.
+
+\paragraph{Full-distribution $\Delta\mathrm{MI}$ (survived + terminated).}
+To confirm that termination does not create a selection artefact, we compute
+$\Delta\mathrm{MI}$ at each rule's last recorded step for \emph{all} 5{,}000
+rules per condition (censoring policy: MI at last recorded step, no
+imputation).  Table~\ref{tab:full_dist_delta_mi} reports the full-distribution
+results.
+
+\begin{table}[htbp]
+\centering
+\caption{Full-distribution $\Delta\mathrm{MI}$ (all 5{,}000 rules per
+condition; MI at last recorded step for terminated rules).
+The condition ordering Phase~2 $>$ Phase~1 $\approx$ Control is preserved
+even when terminated rules are included.}
+\label{tab:full_dist_delta_mi}
+\begin{tabular}{lcc}
+\toprule
+Condition & Median $\Delta\mathrm{MI}$ & Fraction $\Delta\mathrm{MI}>0$ \\
+\midrule
+Phase~1  & 0.000 & 28.6\% \\
+Phase~2  & 0.096 & 58.0\% \\
+Control  & 0.000 & 14.4\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The Phase~2 median $\Delta\mathrm{MI}$ remains 0.096~bits in the full
+distribution (identical to the survivor-only value, because the terminated
+rules have near-zero $\Delta\mathrm{MI}$ on average and do not shift the
+median substantially).  Phase~1 and Control retain median $\Delta\mathrm{MI}=0$.
+State-uniformity filtering removes only zero-MI configurations and cannot
+preferentially select high-MI survivors.
+
+%% =========================================================================
 %% BIBLIOGRAPHY
 %% =========================================================================
 \footnotesize

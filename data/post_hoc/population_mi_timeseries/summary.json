@@ -1,0 +1,45 @@
+{
+  "n_rules_per_condition": 500,
+  "n_shuffles": 10,
+  "seed": 42,
+  "timesteps": [
+    0,
+    10,
+    20,
+    30,
+    40,
+    50,
+    60,
+    70,
+    80,
+    90,
+    100,
+    110,
+    120,
+    130,
+    140,
+    150,
+    160,
+    170,
+    180,
+    190,
+    199
+  ],
+  "conditions": {
+    "phase_1": {
+      "total_survivors": 3571,
+      "n_sampled": 500,
+      "fraction_timesteps_positive_median": 0.0
+    },
+    "phase_2": {
+      "total_survivors": 3735,
+      "n_sampled": 500,
+      "fraction_timesteps_positive_median": 1.0
+    },
+    "control": {
+      "total_survivors": 2227,
+      "n_sampled": 500,
+      "fraction_timesteps_positive_median": 0.0
+    }
+  }
+}
