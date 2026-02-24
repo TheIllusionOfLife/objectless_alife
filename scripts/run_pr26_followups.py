@@ -15,6 +15,7 @@ import platform
 import shlex
 import subprocess
 import sys
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -103,167 +104,82 @@ def main(argv: list[str] | None = None) -> None:
         ]
         checksums_path.write_text("\n".join(lines) + "\n")
 
-    no_filter_dir = out_dir / "no_filter"
-    no_filter_args = ["--out-dir", str(no_filter_dir)]
-    if args.quick:
-        no_filter_args.append("--quick")
-    manifest["commands"]["no_filter"] = [
-        "uv",
-        "run",
-        "python",
-        "scripts/no_filter_analysis.py",
-        *no_filter_args,
-    ]
-    try:
-        run_no_filter(no_filter_args)
-        manifest["analysis_status"] = {**manifest["analysis_status"], "no_filter": "success"}
-    except Exception as exc:
-        manifest["analysis_status"] = {
-            **manifest["analysis_status"],
-            "no_filter": f"failed: {exc}",
-        }
-    manifest["outputs"] = {
-        **manifest["outputs"],
-        "no_filter": {
-            "json": str(no_filter_dir / "summary.json"),
-            "csv": str(no_filter_dir / "summary.csv"),
-        },
-    }
-    _write_manifest()
+    def _run_analysis(
+        key: str,
+        script_name: str,
+        func: Callable[[list[str]], None],
+        target_dir: Path,
+        extra_args: list[str] | None = None,
+        custom_outputs: dict[str, str] | None = None,
+    ) -> None:
+        cmd_args = list(extra_args or []) + ["--out-dir", str(target_dir)]
+        if args.quick:
+            cmd_args.append("--quick")
 
-    sync_dir = out_dir / "synchronous_ablation"
-    sync_args = ["--out-dir", str(sync_dir)]
-    if args.quick:
-        sync_args.append("--quick")
-    manifest["commands"] = {
-        **manifest["commands"],
-        "synchronous_ablation": [
+        manifest["commands"][key] = [
             "uv",
             "run",
             "python",
-            "scripts/synchronous_ablation.py",
-            *sync_args,
-        ],
-    }
-    try:
-        run_sync_ablation(sync_args)
-        manifest["analysis_status"] = {
-            **manifest["analysis_status"],
-            "synchronous_ablation": "success",
-        }
-    except Exception as exc:
-        manifest["analysis_status"] = {
-            **manifest["analysis_status"],
-            "synchronous_ablation": f"failed: {exc}",
-        }
-    manifest["outputs"] = {
-        **manifest["outputs"],
-        "synchronous_ablation": {
-            "json": str(sync_dir / "summary.json"),
-            "csv": str(sync_dir / "summary.csv"),
-        },
-    }
-    _write_manifest()
+            f"scripts/{script_name}.py",
+            *cmd_args,
+        ]
 
-    ranking_dir = out_dir / "ranking_stability"
-    ranking_args = ["--out-dir", str(ranking_dir)]
-    if args.quick:
-        ranking_args.append("--quick")
-    manifest["commands"] = {
-        **manifest["commands"],
-        "ranking_stability": [
-            "uv",
-            "run",
-            "python",
-            "scripts/ranking_stability.py",
-            *ranking_args,
-        ],
-    }
-    try:
-        run_ranking_stability(ranking_args)
-        manifest["analysis_status"] = {
-            **manifest["analysis_status"],
-            "ranking_stability": "success",
-        }
-    except Exception as exc:
-        manifest["analysis_status"] = {
-            **manifest["analysis_status"],
-            "ranking_stability": f"failed: {exc}",
-        }
-    manifest["outputs"] = {
-        **manifest["outputs"],
-        "ranking_stability": {
-            "json": str(ranking_dir / "summary.json"),
-            "csv": str(ranking_dir / "summary.csv"),
-        },
-    }
-    _write_manifest()
+        try:
+            func(cmd_args)
+            manifest["analysis_status"][key] = "success"
+        except Exception as exc:
+            manifest["analysis_status"][key] = f"failed: {exc}"
 
-    te_dir = out_dir / "te_null"
-    te_args = [
-        "--data-dir",
-        str(args.data_dir),
-        "--out-dir",
-        str(te_dir),
-    ]
-    if args.quick:
-        te_args.append("--quick")
-    manifest["commands"] = {
-        **manifest["commands"],
-        "te_null": ["uv", "run", "python", "scripts/te_null_analysis.py", *te_args],
-    }
-    try:
-        run_te_null(te_args)
-        manifest["analysis_status"] = {**manifest["analysis_status"], "te_null": "success"}
-    except Exception as exc:
-        manifest["analysis_status"] = {**manifest["analysis_status"], "te_null": f"failed: {exc}"}
-    manifest["outputs"] = {
-        **manifest["outputs"],
-        "te_null": {
-            "json": str(te_dir / "summary.json"),
-            "csv": str(te_dir / "summary.csv"),
-        },
-    }
-    _write_manifest()
+        if custom_outputs:
+            manifest["outputs"][key] = custom_outputs
+        else:
+            manifest["outputs"][key] = {
+                "json": str(target_dir / "summary.json"),
+                "csv": str(target_dir / "summary.csv"),
+            }
+        _write_manifest()
+
+    _run_analysis(
+        "no_filter",
+        "no_filter_analysis",
+        run_no_filter,
+        out_dir / "no_filter",
+    )
+
+    _run_analysis(
+        "synchronous_ablation",
+        "synchronous_ablation",
+        run_sync_ablation,
+        out_dir / "synchronous_ablation",
+    )
+
+    _run_analysis(
+        "ranking_stability",
+        "ranking_stability",
+        run_ranking_stability,
+        out_dir / "ranking_stability",
+    )
+
+    _run_analysis(
+        "te_null",
+        "te_null_analysis",
+        run_te_null,
+        out_dir / "te_null",
+        extra_args=["--data-dir", str(args.data_dir)],
+    )
 
     taxonomy_dir = out_dir / "phenotypes"
-    taxonomy_args = [
-        "--data-dir",
-        str(args.data_dir),
-        "--out-dir",
-        str(taxonomy_dir),
-    ]
-    if args.quick:
-        taxonomy_args.append("--quick")
-    manifest["commands"] = {
-        **manifest["commands"],
-        "phenotype_taxonomy": [
-            "uv",
-            "run",
-            "python",
-            "scripts/phenotype_taxonomy.py",
-            *taxonomy_args,
-        ],
-    }
-    try:
-        run_taxonomy(taxonomy_args)
-        manifest["analysis_status"] = {
-            **manifest["analysis_status"],
-            "phenotype_taxonomy": "success",
-        }
-    except Exception as exc:
-        manifest["analysis_status"] = {
-            **manifest["analysis_status"],
-            "phenotype_taxonomy": f"failed: {exc}",
-        }
-    manifest["outputs"] = {
-        **manifest["outputs"],
-        "phenotype_taxonomy": {
+    _run_analysis(
+        "phenotype_taxonomy",
+        "phenotype_taxonomy",
+        run_taxonomy,
+        taxonomy_dir,
+        extra_args=["--data-dir", str(args.data_dir)],
+        custom_outputs={
             "json": str(taxonomy_dir / "taxonomy.json"),
             "csv": str(taxonomy_dir / "taxonomy.csv"),
         },
-    }
-    _write_manifest()
+    )
 
     git_commit = _run_output(["git", "rev-parse", "HEAD"])
 
