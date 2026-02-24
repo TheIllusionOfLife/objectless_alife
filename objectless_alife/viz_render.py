@@ -7,6 +7,8 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from matplotlib import animation
 from matplotlib.colors import BoundaryNorm, ListedColormap
@@ -472,11 +474,10 @@ def _aggregate_metric_data(
 
     for label, metrics_path in phase_data:
         final_table = load_final_step_metrics(metrics_path)
-        vals = []
-        for row in final_table.to_pylist():
-            v = row.get(metric_name)
-            if v is not None and not (isinstance(v, float) and math.isnan(v)):
-                vals.append(float(v))
+        vals: list[float] = []
+        if metric_name in final_table.column_names:
+            col = final_table.column(metric_name).cast(pa.float64())
+            vals = pc.filter(col, pc.is_finite(col)).to_pylist()
         all_data.append(vals)
         labels.append(label)
 
