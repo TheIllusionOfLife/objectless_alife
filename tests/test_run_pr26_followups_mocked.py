@@ -1,4 +1,3 @@
-
 import json
 import sys
 from pathlib import Path
@@ -36,11 +35,7 @@ def test_run_pr26_followups_mocked(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr("subprocess.run", mock_subprocess_run)
 
     # Run the main function
-    args = [
-        "--data-dir", str(data_dir),
-        "--out-dir", str(out_dir),
-        "--quick"
-    ]
+    args = ["--data-dir", str(data_dir), "--out-dir", str(out_dir), "--quick"]
 
     # We need to make sure the mocked mains don't raise exceptions by default
     mock_no_filter.main.return_value = None
