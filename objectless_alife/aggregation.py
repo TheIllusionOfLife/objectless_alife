@@ -619,15 +619,15 @@ def _load_survived_rule_seeds(rules_dir: Path) -> dict[str, int]:
     survived_seeds: dict[str, int] = {}
 
     if experiment_parquet.exists():
-        for batch in pq.ParquetFile(experiment_parquet).iter_batches(
-            columns=["rule_id", "survived", "rule_seed"], batch_size=8192
-        ):
-            d = batch.to_pydict()
-            for idx, rid in enumerate(d["rule_id"]):
-                if d["survived"][idx]:
-                    seed_val = d["rule_seed"][idx]
-                    if seed_val is not None:
-                        survived_seeds[str(rid)] = int(seed_val)
+        table = pq.read_table(
+            experiment_parquet,
+            columns=["rule_id", "rule_seed"],
+            filters=[("survived", "=", True)],
+        )
+        pydict = table.to_pydict()
+        for rid, seed_val in zip(pydict["rule_id"], pydict["rule_seed"], strict=False):
+            if seed_val is not None:
+                survived_seeds[str(rid)] = int(seed_val)
     else:
         for path in sorted(rules_dir.glob("*.json")):
             data = json.loads(path.read_text())
