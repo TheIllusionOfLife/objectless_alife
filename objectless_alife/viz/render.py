@@ -6,6 +6,7 @@ import json
 import math
 import re
 from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,6 +16,7 @@ import pyarrow.parquet as pq
 from matplotlib import animation
 from matplotlib.colors import BoundaryNorm, ListedColormap
 from matplotlib.gridspec import GridSpec
+from matplotlib.image import AxesImage
 from matplotlib.patches import Patch
 
 from objectless_alife.analysis.stats import load_final_step_metrics
@@ -64,7 +66,7 @@ def _resolve_grid_dimension(
             f"Cannot infer {metadata_key}: rows are empty and no explicit value provided"
         )
 
-    return max(int(row[axis_key]) for row in rows) + 1
+    return max(int(row[axis_key]) for row in rows) + 1  # type: ignore[call-overload]
 
 
 # ---------------------------------------------------------------------------
@@ -82,7 +84,7 @@ def _build_grid_array(
     """
     grid = np.full((grid_height, grid_width), 4, dtype=int)
     for row in rows:
-        x, y, state = int(row["x"]), int(row["y"]), int(row["state"])
+        x, y, state = int(row["x"]), int(row["y"]), int(row["state"])  # type: ignore[call-overload]
         if not (0 <= state <= 3):
             state = 4
         if 0 <= y < grid_height and 0 <= x < grid_width:
@@ -119,7 +121,7 @@ def _draw_cell_grid(
     norm: BoundaryNorm,
     dark: bool = False,
     theme: Theme = DEFAULT_THEME,
-) -> object:
+) -> AxesImage:
     """Shared renderer: imshow with subtle grid lines on *ax*."""
     img = ax.imshow(grid, cmap=cmap, norm=norm, origin="upper", aspect="equal")
     h, w = grid.shape
@@ -290,7 +292,7 @@ def render_rule_animation(
 
     x_max = max(steps)
     metric_values_list: list[list[float]] = []
-    metric_lines: list[object] = []
+    metric_lines: list[Any] = []
 
     for idx, m_name in enumerate(effective_metrics):
         ax_m = metric_axes[idx]
@@ -309,7 +311,7 @@ def render_rule_animation(
 
     fig.tight_layout()
 
-    def update(frame_index: int) -> tuple[object, ...]:
+    def update(frame_index: int) -> tuple[Any, ...]:
         step = steps[frame_index]
         rows = by_step[step]
         grid = _build_grid_array(rows, resolved_width, resolved_height)
@@ -326,6 +328,7 @@ def render_rule_animation(
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     suffix = output_path.suffix.lower()
+    writer: animation.PillowWriter | animation.FFMpegWriter
     if suffix == ".gif":
         writer = animation.PillowWriter(fps=fps)
     else:
@@ -450,7 +453,7 @@ def render_snapshot_grid(
         fontsize=8,
         frameon=False,
     )
-    fig.tight_layout(rect=[0, 0.06, 1, 1])
+    fig.tight_layout(rect=(0, 0.06, 1, 1))
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=300)
@@ -493,7 +496,7 @@ def render_metric_distribution(
     n_metrics = len(metric_names)
     fig, axes = plt.subplots(1, n_metrics, figsize=(4 * n_metrics, 5), squeeze=False)
 
-    stats: dict[str, object] | None = None
+    stats: dict[str, Any] | None = None
     if stats_path is not None:
         stats = json.loads(Path(stats_path).read_text())
 
@@ -714,7 +717,7 @@ def render_filmstrip(
         frameon=False,
         labelcolor="white",
     )
-    fig.tight_layout(rect=[0, 0.10, 1, 0.95])
+    fig.tight_layout(rect=(0, 0.10, 1, 0.95))
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=200, facecolor=fig.get_facecolor())

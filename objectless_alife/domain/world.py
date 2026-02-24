@@ -64,7 +64,7 @@ class World:
 
     def _build_neighbor_cache(self) -> dict[tuple[int, int], tuple[tuple[int, int], ...]]:
         """Precompute neighbor coordinates for all grid cells."""
-        cache = {}
+        cache: dict[tuple[int, int], tuple[tuple[int, int], ...]] = {}
         w, h = self.config.grid_width, self.config.grid_height
         for x in range(w):
             for y in range(h):
