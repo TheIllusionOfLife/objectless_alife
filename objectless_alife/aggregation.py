@@ -699,6 +699,61 @@ def _run_simulation_to_completion(
     return termination_reason, world.snapshot()
 
 
+def _run_simulation_and_metrics(
+    rule_table: list[int],
+    sim_seed: int,
+    steps: int,
+    halt_window: int,
+    phase: ObservationPhase,
+    update_mode: UpdateMode,
+    enable_viability_filters: bool,
+    state_uniform_mode: StateUniformMode,
+    shuffle_null_n_shuffles: int,
+) -> dict[str, Any]:
+    """Run a single simulation and compute robustness metrics.
+
+    Internal helper shared by multi-seed and halt-window sweeps.
+    """
+    world_cfg = WorldConfig(steps=steps)
+    world = World(config=world_cfg, sim_seed=sim_seed)
+    halt_detector = HaltDetector(window=halt_window)
+    uniform_detector = StateUniformDetector()
+
+    termination_reason, snapshot = _run_simulation_to_completion(
+        world,
+        rule_table,
+        phase,
+        halt_detector,
+        uniform_detector,
+        update_mode,
+        enable_viability_filters,
+        state_uniform_mode,
+    )
+
+    survived = termination_reason is None
+    mi = neighbor_mutual_information(snapshot, world_cfg.grid_width, world_cfg.grid_height)
+    mi_null = shuffle_null_mi(
+        snapshot,
+        world_cfg.grid_width,
+        world_cfg.grid_height,
+        n_shuffles=shuffle_null_n_shuffles,
+        rng=random.Random(sim_seed),
+    )
+    mi_delta = mi - mi_null
+    n_pairs = neighbor_pair_count(snapshot, world_cfg.grid_width, world_cfg.grid_height)
+    adj_frac = same_state_adjacency_fraction(snapshot, world_cfg.grid_width, world_cfg.grid_height)
+
+    return {
+        "survived": survived,
+        "termination_reason": termination_reason,
+        "neighbor_mutual_information": mi,
+        "mi_shuffle_null": mi_null,
+        "delta_mi": mi_delta,
+        "n_pairs": n_pairs,
+        "same_state_adjacency_fraction": adj_frac,
+    }
+
+
 def run_multi_seed_robustness(config: MultiSeedConfig) -> Path:
     """Evaluate selected rules across multiple simulation seeds for robustness.
 
@@ -720,52 +775,33 @@ def run_multi_seed_robustness(config: MultiSeedConfig) -> Path:
     rows: list[dict[str, Any]] = []
 
     for rule_seed in config.rule_seeds:
+        rule_table = generate_rule_table(phase=config.phase, seed=rule_seed)
         for sim_seed_offset in range(config.n_sim_seeds):
             sim_seed = rule_seed * _SIM_SEED_MULTIPLIER + sim_seed_offset
 
-            rule_table = generate_rule_table(phase=config.phase, seed=rule_seed)
-            world_cfg = WorldConfig(steps=config.steps)
-            world = World(config=world_cfg, sim_seed=sim_seed)
-            halt_detector = HaltDetector(window=config.halt_window)
-            uniform_detector = StateUniformDetector()
-
-            termination_reason, snapshot = _run_simulation_to_completion(
-                world,
-                rule_table,
-                config.phase,
-                halt_detector,
-                uniform_detector,
-                config.update_mode,
-                config.enable_viability_filters,
-                config.state_uniform_mode,
-            )
-
-            survived = termination_reason is None
-            mi = neighbor_mutual_information(snapshot, world_cfg.grid_width, world_cfg.grid_height)
-            mi_null = shuffle_null_mi(
-                snapshot,
-                world_cfg.grid_width,
-                world_cfg.grid_height,
-                n_shuffles=config.shuffle_null_n_shuffles,
-                rng=random.Random(sim_seed),
-            )
-            mi_delta = mi - mi_null
-            n_pairs = neighbor_pair_count(snapshot, world_cfg.grid_width, world_cfg.grid_height)
-            adj_frac = same_state_adjacency_fraction(
-                snapshot, world_cfg.grid_width, world_cfg.grid_height
+            result = _run_simulation_and_metrics(
+                rule_table=rule_table,
+                sim_seed=sim_seed,
+                steps=config.steps,
+                halt_window=config.halt_window,
+                phase=config.phase,
+                update_mode=config.update_mode,
+                enable_viability_filters=config.enable_viability_filters,
+                state_uniform_mode=config.state_uniform_mode,
+                shuffle_null_n_shuffles=config.shuffle_null_n_shuffles,
             )
 
             rows.append(
                 {
                     "rule_seed": rule_seed,
                     "sim_seed": sim_seed,
-                    "survived": survived,
-                    "termination_reason": termination_reason,
-                    "neighbor_mutual_information": mi,
-                    "mi_shuffle_null": mi_null,
-                    "delta_mi": mi_delta,
-                    "n_pairs": n_pairs,
-                    "same_state_adjacency_fraction": adj_frac,
+                    "survived": result["survived"],
+                    "termination_reason": result["termination_reason"],
+                    "neighbor_mutual_information": result["neighbor_mutual_information"],
+                    "mi_shuffle_null": result["mi_shuffle_null"],
+                    "delta_mi": result["delta_mi"],
+                    "n_pairs": result["n_pairs"],
+                    "same_state_adjacency_fraction": result["same_state_adjacency_fraction"],
                     "update_mode": config.update_mode.value,
                     "state_uniform_mode": config.state_uniform_mode.value,
                     "enable_viability_filters": config.enable_viability_filters,
@@ -799,44 +835,29 @@ def run_halt_window_sweep(config: HaltWindowSweepConfig) -> Path:
         rule_table = generate_rule_table(phase=config.phase, seed=rule_seed)
         for halt_window in config.halt_windows:
             sim_seed = rule_seed * _SIM_SEED_MULTIPLIER
-            world_cfg = WorldConfig(steps=config.steps)
-            world = World(config=world_cfg, sim_seed=sim_seed)
-            halt_detector = HaltDetector(window=halt_window)
-            uniform_detector = StateUniformDetector()
 
-            termination_reason, snapshot = _run_simulation_to_completion(
-                world,
-                rule_table,
-                config.phase,
-                halt_detector,
-                uniform_detector,
-                config.update_mode,
+            result = _run_simulation_and_metrics(
+                rule_table=rule_table,
+                sim_seed=sim_seed,
+                steps=config.steps,
+                halt_window=halt_window,
+                phase=config.phase,
+                update_mode=config.update_mode,
                 enable_viability_filters=config.enable_viability_filters,
                 state_uniform_mode=config.state_uniform_mode,
+                shuffle_null_n_shuffles=config.shuffle_null_n_shuffles,
             )
-
-            survived = termination_reason is None
-            mi = neighbor_mutual_information(snapshot, world_cfg.grid_width, world_cfg.grid_height)
-            mi_null = shuffle_null_mi(
-                snapshot,
-                world_cfg.grid_width,
-                world_cfg.grid_height,
-                n_shuffles=config.shuffle_null_n_shuffles,
-                rng=random.Random(sim_seed),
-            )
-            mi_delta = mi - mi_null
-            n_pairs = neighbor_pair_count(snapshot, world_cfg.grid_width, world_cfg.grid_height)
 
             rows.append(
                 {
                     "rule_seed": rule_seed,
                     "halt_window": halt_window,
-                    "survived": survived,
-                    "termination_reason": termination_reason,
-                    "neighbor_mutual_information": mi,
-                    "mi_shuffle_null": mi_null,
-                    "delta_mi": mi_delta,
-                    "n_pairs": n_pairs,
+                    "survived": result["survived"],
+                    "termination_reason": result["termination_reason"],
+                    "neighbor_mutual_information": result["neighbor_mutual_information"],
+                    "mi_shuffle_null": result["mi_shuffle_null"],
+                    "delta_mi": result["delta_mi"],
+                    "n_pairs": result["n_pairs"],
                     "update_mode": config.update_mode.value,
                     "state_uniform_mode": config.state_uniform_mode.value,
                     "enable_viability_filters": config.enable_viability_filters,
