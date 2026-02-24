@@ -28,6 +28,13 @@ from objectless_alife.experiments.experiment import run_experiment
 from objectless_alife.simulation.engine import run_batch_search
 
 # ---------------------------------------------------------------------------
+# Module-level constants
+# ---------------------------------------------------------------------------
+
+DENSITY_SWEEP_PHASES = [1, 2]
+"""Phase values run during a density sweep (Phase 1 and Phase 2)."""
+
+# ---------------------------------------------------------------------------
 # CLI parsing helpers
 # ---------------------------------------------------------------------------
 
@@ -136,10 +143,14 @@ def _coerce_bool(raw: object, key: str) -> bool:
 
 
 def _coerce_int(raw: object, key: str) -> int:
-    """Coerce raw value to int; rejects booleans."""
+    """Coerce raw value to int; rejects booleans and non-integer floats."""
     if isinstance(raw, bool):
         raise ValueError(f"{key} must be an integer value")
-    if isinstance(raw, (int, float, str, bytes, bytearray)):
+    if isinstance(raw, float):
+        if raw != int(raw):
+            raise ValueError(f"{key} must be an integer value, got {raw!r}")
+        return int(raw)
+    if isinstance(raw, (int, str, bytes, bytearray)):
         return int(raw)
     if hasattr(raw, "__int__"):
         return int(raw)
@@ -327,7 +338,7 @@ def main(argv: list[str] | None = None) -> None:
     is_experiment = _get_bool(args.experiment, "experiment", file_cfg, False)
 
     if is_density_sweep and is_experiment:
-        raise ValueError(
+        parser.error(
             "--density-sweep and --experiment cannot both be enabled; "
             "disable one via CLI (--no-density-sweep / --no-experiment) "
             "or in the config file"
@@ -359,7 +370,7 @@ def main(argv: list[str] | None = None) -> None:
         results = run_density_sweep(density_sweep_config)
         summary = {
             "mode": "density_sweep",
-            "phases": [1, 2],
+            "phases": DENSITY_SWEEP_PHASES,
             "density_points": len(density_sweep_config.grid_sizes)
             * len(density_sweep_config.agent_counts),
             "total_rules": len(results),

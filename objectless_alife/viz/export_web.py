@@ -32,7 +32,10 @@ def _load_rule_json(data_dir: Path, rule_id: str) -> dict:
     rule_path = data_dir / "rules" / f"{rule_id}.json"
     if not rule_path.exists():
         raise ValueError(f"Rule JSON not found: {rule_path}")
-    return json.loads(rule_path.read_text())
+    try:
+        return json.loads(rule_path.read_text())
+    except (json.JSONDecodeError, OSError) as exc:
+        raise ValueError(f"Failed to load rule JSON: {rule_path}: {exc}") from exc
 
 
 def _build_single_payload(data_dir: Path, rule_id: str) -> dict:
@@ -79,7 +82,7 @@ def _build_single_payload(data_dir: Path, rule_id: str) -> dict:
 
     # Build metrics series
     metric_dict = metric_table.to_pydict()
-    metric_steps = metric_dict["step"]
+    metric_steps = metric_dict.get("step", [])
     step_order = sorted(range(len(metric_steps)), key=lambda i: metric_steps[i])
 
     mi_values = metric_dict.get("neighbor_mutual_information", [])
@@ -133,10 +136,15 @@ def _find_rule_id_by_sim_seed(data_dir: Path, sim_seed: int) -> str | None:
     if not rules_dir.exists():
         return None
     for rule_path in sorted(rules_dir.glob("*.json")):
-        payload = json.loads(rule_path.read_text())
+        try:
+            payload = json.loads(rule_path.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
         metadata = payload.get("metadata", {})
         if metadata.get("sim_seed") == sim_seed:
-            return payload["rule_id"]
+            rule_id = payload.get("rule_id")
+            if rule_id is not None:
+                return str(rule_id)
     return None
 
 
@@ -151,9 +159,14 @@ def _get_surviving_rules_ranked_by_mi(data_dir: Path) -> list[tuple[str, float]]
     # Collect survived rule IDs
     survived_ids: set[str] = set()
     for rule_path in sorted(rules_dir.glob("*.json")):
-        payload = json.loads(rule_path.read_text())
+        try:
+            payload = json.loads(rule_path.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
         if payload.get("survived", False):
-            survived_ids.add(payload["rule_id"])
+            rule_id = payload.get("rule_id")
+            if rule_id is not None:
+                survived_ids.add(str(rule_id))
 
     if not survived_ids:
         return []
@@ -189,6 +202,7 @@ def _get_surviving_rules_ranked_by_mi(data_dir: Path) -> list[tuple[str, float]]
 
 def export_single(data_dir: Path, rule_id: str, output: Path, base_dir: Path | None = None) -> None:
     """Export one rule's trajectory as web-ready JSON."""
+    rule_id = Path(rule_id).name
     if base_dir is None:
         data_dir = Path(data_dir).resolve()
         output = Path(output).resolve()

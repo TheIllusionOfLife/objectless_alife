@@ -391,8 +391,11 @@ def filter_metric_independence(metrics_path: Path, rules_dir: Path) -> dict:
     # Load survival status from rule JSONs
     survival: dict[str, bool] = {}
     for path in sorted(rules_dir.glob("*.json")):
-        data = json.loads(path.read_text())
-        survival[data["rule_id"]] = bool(data.get("survived", False))
+        try:
+            data = json.loads(path.read_text())
+            survival[data["rule_id"]] = bool(data.get("survived", False))
+        except (json.JSONDecodeError, OSError, KeyError):
+            continue
 
     # Load final-step MI values
     final_metrics = load_final_step_metrics(metrics_path)

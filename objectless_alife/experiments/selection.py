@@ -50,12 +50,15 @@ def _load_survived_rule_seeds(rules_dir: Path) -> dict[str, int]:
                 survived_seeds[str(rid)] = int(seed_val)
     else:
         for path in sorted(rules_dir.glob("*.json")):
-            data = json.loads(path.read_text())
-            if not data.get("survived", False):
+            try:
+                data = json.loads(path.read_text())
+                if not data.get("survived", False):
+                    continue
+                rid = str(data["rule_id"])
+                seed = data["metadata"]["rule_seed"]
+                survived_seeds[rid] = int(seed)
+            except (json.JSONDecodeError, KeyError, OSError):
                 continue
-            rid = data["rule_id"]
-            seed = data["metadata"]["rule_seed"]
-            survived_seeds[rid] = int(seed)
 
     return survived_seeds
 

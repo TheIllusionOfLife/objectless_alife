@@ -5,7 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from random import Random
 
-from objectless_alife.config.constants import CLOCK_PERIOD, NUM_STATES
+from objectless_alife.config.constants import (
+    CLOCK_PERIOD,
+    GRID_HEIGHT,
+    GRID_WIDTH,
+    NUM_AGENTS,
+    NUM_STATES,
+    NUM_STEPS,
+)
 from objectless_alife.domain.rules import (
     ObservationPhase,
     compute_capacity_matched_index,
@@ -36,11 +43,11 @@ class Agent:
 class WorldConfig:
     """Simulation parameters for the grid world."""
 
-    grid_width: int = 20
-    grid_height: int = 20
-    num_agents: int = 30
+    grid_width: int = GRID_WIDTH
+    grid_height: int = GRID_HEIGHT
+    num_agents: int = NUM_AGENTS
     num_states: int = NUM_STATES
-    steps: int = 200
+    steps: int = NUM_STEPS
 
 
 class World:
@@ -83,6 +90,12 @@ class World:
         if actual_ids != expected_ids:
             raise ValueError("agent_ids must be contiguous 0..num_agents-1")
 
+        for a in sorted_agents:
+            if not (0 <= a.x < config.grid_width and 0 <= a.y < config.grid_height):
+                raise ValueError(
+                    f"Agent {a.agent_id} position ({a.x}, {a.y}) is outside the grid "
+                    f"({config.grid_width}x{config.grid_height})"
+                )
         world.agents = [Agent(a.agent_id, a.x, a.y, a.state) for a in sorted_agents]
         if len({(a.x, a.y) for a in world.agents}) != len(world.agents):
             raise ValueError("Agents cannot overlap")
@@ -140,7 +153,7 @@ class World:
         Action 8 is an explicit no-op. Values outside [0, 8] are invalid.
         """
         if not 0 <= action <= NOOP_ACTION:
-            raise ValueError("action must be in [0, 8]")
+            raise ValueError(f"action must be in [0, {NOOP_ACTION}]")
 
         agent = self.agents[agent_id]
         if action in {0, 1, 2, 3}:
