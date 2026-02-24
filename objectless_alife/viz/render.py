@@ -20,6 +20,7 @@ from matplotlib.image import AxesImage
 from matplotlib.patches import Patch
 
 from objectless_alife.analysis.stats import load_final_step_metrics
+from objectless_alife.io.paths import resolve_within_base as _resolve_within_base
 from objectless_alife.viz.theme import DEFAULT_THEME, Theme
 
 # Backward-compatible module-level aliases (read-only snapshots of default).
@@ -34,16 +35,6 @@ GRID_LINE_COLOR: str = DEFAULT_THEME.grid_line_color
 GRID_LINE_COLOR_DARK: str = DEFAULT_THEME.grid_line_color_dark
 
 _SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9_\-]+$")
-
-
-def _resolve_within_base(path: Path, base_dir: Path) -> Path:
-    """Resolve path and ensure it stays within the trusted base directory."""
-    candidate = path if path.is_absolute() else base_dir / path
-    resolved = candidate.resolve()
-    base_resolved = base_dir.resolve()
-    if resolved != base_resolved and base_resolved not in resolved.parents:
-        raise ValueError(f"Path escapes base_dir: {path}")
-    return resolved
 
 
 def _resolve_grid_dimension(

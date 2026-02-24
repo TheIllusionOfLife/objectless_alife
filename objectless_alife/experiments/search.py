@@ -273,7 +273,12 @@ def main(argv: list[str] | None = None) -> None:
     # Load config file defaults (CLI overrides file, file overrides built-in)
     file_cfg: dict[str, object] = {}
     if args.config is not None:
-        file_cfg = json.loads(Path(args.config).read_text())
+        try:
+            file_cfg = json.loads(Path(args.config).read_text())
+        except FileNotFoundError:
+            parser.error(f"Config file not found: {args.config}")
+        except json.JSONDecodeError as exc:
+            parser.error(f"Config file is not valid JSON: {args.config}: {exc}")
 
     phase_raw = _get_int(args.phase, "phase", file_cfg, 1)
     n_rules = _get_int(args.n_rules, "n_rules", file_cfg, 100)

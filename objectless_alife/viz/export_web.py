@@ -17,20 +17,12 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
+from objectless_alife.io.paths import resolve_within_base as _resolve_within_base
+
 DEFAULT_GRID_WIDTH = 20
 DEFAULT_GRID_HEIGHT = 20
 
 _SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9_\-]+$")
-
-
-def _resolve_within_base(path: Path, base_dir: Path) -> Path:
-    """Resolve path and ensure it stays within the trusted base directory."""
-    candidate = path if path.is_absolute() else base_dir / path
-    resolved = candidate.resolve()
-    base_resolved = base_dir.resolve()
-    if resolved != base_resolved and base_resolved not in resolved.parents:
-        raise ValueError(f"Path escapes base_dir: {path}")
-    return resolved
 
 
 def _load_rule_json(data_dir: Path, rule_id: str) -> dict:

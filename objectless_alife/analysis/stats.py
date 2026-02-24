@@ -347,7 +347,10 @@ def pairwise_survival_comparison(rules_dir_a: Path, rules_dir_b: Path) -> dict:
         survived = 0
         total = 0
         for path in sorted(rules_dir.glob("*.json")):
-            data = json.loads(path.read_text())
+            try:
+                data = json.loads(path.read_text())
+            except json.JSONDecodeError:
+                continue
             total += 1
             if data.get("survived", False):
                 survived += 1

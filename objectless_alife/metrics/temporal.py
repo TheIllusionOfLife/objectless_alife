@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import math
 import statistics
-from collections import Counter
 from typing import Sequence
+
+from objectless_alife.metrics.information import state_entropy
 
 
 def quasi_periodicity_peak_count(series: Sequence[float]) -> int:
@@ -44,15 +44,7 @@ def phase_transition_max_delta(series: Sequence[float]) -> float:
 
 def action_entropy(actions: Sequence[int]) -> float:
     """Compute Shannon entropy for an action sequence."""
-    if not actions:
-        return 0.0
-    counts = Counter(actions)
-    n = len(actions)
-    entropy = 0.0
-    for count in counts.values():
-        p = count / n
-        entropy -= p * math.log2(p)
-    return entropy
+    return state_entropy(actions)
 
 
 def action_entropy_variance(per_agent_actions: Sequence[Sequence[int]]) -> float:

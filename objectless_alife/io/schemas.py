@@ -160,6 +160,7 @@ HALT_WINDOW_SWEEP_SCHEMA = pa.schema(
         ("mi_shuffle_null", pa.float64()),
         ("delta_mi", pa.float64()),
         ("n_pairs", pa.int64()),
+        ("same_state_adjacency_fraction", pa.float64()),
         ("update_mode", pa.string()),
         ("state_uniform_mode", pa.string()),
         ("enable_viability_filters", pa.bool_()),

@@ -9,6 +9,19 @@ from __future__ import annotations
 from pathlib import Path
 
 
+def resolve_within_base(path: Path, base_dir: Path) -> Path:
+    """Resolve *path* and ensure it stays within the trusted *base_dir*.
+
+    Raises :exc:`ValueError` if the resolved path escapes the base directory.
+    """
+    candidate = path if path.is_absolute() else base_dir / path
+    resolved = candidate.resolve()
+    base_resolved = base_dir.resolve()
+    if resolved != base_resolved and base_resolved not in resolved.parents:
+        raise ValueError(f"Path escapes base_dir: {path}")
+    return resolved
+
+
 def rules_dir(out_dir: Path) -> Path:
     """Return path to the rules subdirectory within an output directory."""
     return out_dir / "rules"

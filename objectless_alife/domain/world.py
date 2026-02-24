@@ -43,14 +43,6 @@ class WorldConfig:
     steps: int = 200
 
 
-# Import UpdateMode from config.types to avoid circular imports
-# (config.types depends on domain.rules, not domain.world)
-def _get_update_mode():  # type: ignore[return]
-    from objectless_alife.config.types import UpdateMode
-
-    return UpdateMode
-
-
 class World:
     """Toroidal grid world with collision-constrained agent updates."""
 

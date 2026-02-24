@@ -174,7 +174,10 @@ def collect_final_metric_rows(
     for required_col in ("rule_id", "step"):
         if required_col not in available_columns:
             raise ValueError(f"metrics parquet missing required column: {required_col}")
-    present_columns = [col for col in metric_columns if col in available_columns]
+    required = ["rule_id", "step"]
+    present_columns = required + [
+        col for col in metric_columns if col in available_columns and col not in {"rule_id", "step"}
+    ]
 
     for batch in metrics_file.iter_batches(columns=present_columns, batch_size=8192):
         batch_dict = batch.to_pydict()

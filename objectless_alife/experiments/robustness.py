@@ -215,6 +215,7 @@ def run_halt_window_sweep(config: HaltWindowSweepConfig) -> Path:
                     "mi_shuffle_null": result["mi_shuffle_null"],
                     "delta_mi": result["delta_mi"],
                     "n_pairs": result["n_pairs"],
+                    "same_state_adjacency_fraction": result["same_state_adjacency_fraction"],
                     "update_mode": config.update_mode.value,
                     "state_uniform_mode": config.state_uniform_mode.value,
                     "enable_viability_filters": config.enable_viability_filters,

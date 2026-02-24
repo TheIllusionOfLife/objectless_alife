@@ -20,6 +20,7 @@ def _load_final_step_metrics(metrics_path: Path) -> dict[str, dict[str, float]]:
     ):
         batch_dict = batch.to_pydict()
         for idx, rid in enumerate(batch_dict["rule_id"]):
+            rid = str(rid)
             step = int(batch_dict["step"][idx])
             if rid not in max_steps or step > max_steps[rid]:
                 max_steps[rid] = step
