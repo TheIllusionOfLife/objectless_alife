@@ -275,7 +275,7 @@ def test_visualize_cli_batch_resolves_paths_against_base_dir(
     captured: dict[str, object] = {}
 
     import objectless_alife.visualize as visualize
-    import objectless_alife.viz_cli as viz_cli
+    import objectless_alife.viz.cli as viz_cli
 
     def _fake_render_batch(
         phase_dirs: list[tuple[str, Path]],
@@ -323,7 +323,7 @@ def test_visualize_cli_figure_resolves_paths_against_base_dir(
     series_capture: dict[str, object] = {}
 
     import objectless_alife.visualize as visualize
-    import objectless_alife.viz_cli as viz_cli
+    import objectless_alife.viz.cli as viz_cli
 
     def _fake_select_top_rules(
         metrics_path: Path,

@@ -486,12 +486,12 @@ def test_run_experiment_rejects_excessive_total_workload(tmp_path: Path) -> None
 def test_run_batch_search_does_not_leave_partial_parquet_files_on_early_failure(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import objectless_alife.simulation as simulation_module
+    import objectless_alife.simulation.engine as simulation_engine
 
     def _fail(*args: object, **kwargs: object) -> list[int]:
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(simulation_module, "generate_rule_table", _fail)
+    monkeypatch.setattr(simulation_engine, "generate_rule_table", _fail)
     with pytest.raises(RuntimeError, match="boom"):
         run_batch_search(
             n_rules=1,

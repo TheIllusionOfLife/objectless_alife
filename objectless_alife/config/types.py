@@ -10,13 +10,24 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
-from objectless_alife.rules import ObservationPhase
+from objectless_alife.config.constants import MAX_EXPERIMENT_WORK_UNITS
+from objectless_alife.domain.rules import ObservationPhase
 
-# ---------------------------------------------------------------------------
-# Safety constants
-# ---------------------------------------------------------------------------
-
-MAX_EXPERIMENT_WORK_UNITS = 100_000_000
+# Re-export the safety constant so callers can import from config or config.types
+__all__ = [
+    "MAX_EXPERIMENT_WORK_UNITS",
+    "SimulationResult",
+    "UpdateMode",
+    "StateUniformMode",
+    "RuntimeConfig",
+    "FilterConfig",
+    "MetricComputeConfig",
+    "SearchConfig",
+    "ExperimentConfig",
+    "DensitySweepConfig",
+    "MultiSeedConfig",
+    "HaltWindowSweepConfig",
+]
 
 # ---------------------------------------------------------------------------
 # Result container
