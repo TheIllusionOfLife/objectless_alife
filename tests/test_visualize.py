@@ -284,6 +284,7 @@ def test_visualize_cli_batch_resolves_paths_against_base_dir(
         top_n: int = 3,
         fps: int = 8,
         metric_names: list[str] | None = None,
+        **kwargs: object,
     ) -> list[Path]:
         captured["phase_dirs"] = phase_dirs
         captured["output_dir"] = output_dir
@@ -338,6 +339,7 @@ def test_visualize_cli_figure_resolves_paths_against_base_dir(
         output_path: Path,
         grid_width: int = 20,
         grid_height: int = 20,
+        **kwargs: object,
     ) -> None:
         snapshot_capture["output_path"] = output_path
 
@@ -346,6 +348,7 @@ def test_visualize_cli_figure_resolves_paths_against_base_dir(
         metric_names: list[str],
         output_path: Path,
         stats_path: Path | None = None,
+        **kwargs: object,
     ) -> None:
         dist_capture["phase_data"] = phase_data
         dist_capture["output_path"] = output_path
@@ -355,6 +358,7 @@ def test_visualize_cli_figure_resolves_paths_against_base_dir(
         metric_name: str,
         output_path: Path,
         shared_ylim: bool = True,
+        **kwargs: object,
     ) -> None:
         series_capture["phase_configs"] = phase_configs
         series_capture["output_path"] = output_path

@@ -14,12 +14,7 @@ from matplotlib.gridspec import GridSpec
 from matplotlib.patches import Patch
 
 from objectless_alife.stats import load_final_step_metrics
-from objectless_alife.viz_theme import DEFAULT_THEME, Theme, get_theme
-
-# Single source of truth for the active theme. Functions read from this
-# instead of separate globals.  CLI ``main()`` reassigns it when the
-# ``--theme`` flag is provided.
-_active_theme: Theme = DEFAULT_THEME
+from objectless_alife.viz_theme import DEFAULT_THEME, Theme
 
 # Backward-compatible module-level aliases (read-only snapshots of default).
 METRIC_LABELS: dict[str, str] = DEFAULT_THEME.metric_labels
@@ -33,12 +28,6 @@ GRID_LINE_COLOR: str = DEFAULT_THEME.grid_line_color
 GRID_LINE_COLOR_DARK: str = DEFAULT_THEME.grid_line_color_dark
 
 _SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9_\-]+$")
-
-
-def set_active_theme(theme_name: str) -> None:
-    """Set active visualization theme by registered theme name."""
-    global _active_theme
-    _active_theme = get_theme(theme_name)
 
 
 def _resolve_within_base(path: Path, base_dir: Path) -> Path:
@@ -97,21 +86,23 @@ def _build_grid_array(
     return grid
 
 
-def _state_cmap(dark: bool = False) -> tuple[ListedColormap, BoundaryNorm]:
+def _state_cmap(
+    dark: bool = False, theme: Theme = DEFAULT_THEME
+) -> tuple[ListedColormap, BoundaryNorm]:
     """Discrete 5-color colormap (4 states + empty cell)."""
-    empty = _active_theme.empty_cell_color_dark if dark else _active_theme.empty_cell_color
-    colors = list(_active_theme.state_colors) + [empty]
+    empty = theme.empty_cell_color_dark if dark else theme.empty_cell_color
+    colors = list(theme.state_colors) + [empty]
     cmap = ListedColormap(colors)
     norm = BoundaryNorm([-0.5, 0.5, 1.5, 2.5, 3.5, 4.5], cmap.N)
     return cmap, norm
 
 
-def _build_state_legend_handles(dark: bool = False) -> list[Patch]:
+def _build_state_legend_handles(dark: bool = False, theme: Theme = DEFAULT_THEME) -> list[Patch]:
     """Build legend patch handles for the 4 agent states and empty cells."""
-    empty = _active_theme.empty_cell_color_dark if dark else _active_theme.empty_cell_color
+    empty = theme.empty_cell_color_dark if dark else theme.empty_cell_color
     handles = [
         Patch(facecolor=c, edgecolor="gray", label=f"State {i}")
-        for i, c in enumerate(_active_theme.state_colors)
+        for i, c in enumerate(theme.state_colors)
     ]
     handles.append(Patch(facecolor=empty, edgecolor="gray", label="Empty"))
     return handles
@@ -123,11 +114,12 @@ def _draw_cell_grid(
     cmap: ListedColormap,
     norm: BoundaryNorm,
     dark: bool = False,
+    theme: Theme = DEFAULT_THEME,
 ) -> object:
     """Shared renderer: imshow with subtle grid lines on *ax*."""
     img = ax.imshow(grid, cmap=cmap, norm=norm, origin="upper", aspect="equal")
     h, w = grid.shape
-    line_color = _active_theme.grid_line_color_dark if dark else _active_theme.grid_line_color
+    line_color = theme.grid_line_color_dark if dark else theme.grid_line_color
     for x in range(w + 1):
         ax.axvline(x - 0.5, color=line_color, linewidth=0.5)
     for y in range(h + 1):
@@ -135,7 +127,7 @@ def _draw_cell_grid(
     ax.set_xticks([])
     ax.set_yticks([])
     if dark:
-        ax.set_facecolor(_active_theme.empty_cell_color_dark)
+        ax.set_facecolor(theme.empty_cell_color_dark)
     return img
 
 
@@ -206,6 +198,7 @@ def render_rule_animation(
     grid_width: int | None = None,
     grid_height: int | None = None,
     metric_names: list[str] | None = None,
+    theme: Theme = DEFAULT_THEME,
 ) -> None:
     """Render one rule's trajectory and metric trend as an animation."""
     if base_dir is None:
@@ -284,9 +277,9 @@ def render_rule_animation(
         ax_world = fig.add_subplot(gs[:, 0])
         metric_axes = [fig.add_subplot(gs[i, 1]) for i in range(n_metrics)]
 
-    cmap, norm = _state_cmap(dark=True)
+    cmap, norm = _state_cmap(dark=True, theme=theme)
     init_grid = _build_grid_array(by_step[steps[0]], resolved_width, resolved_height)
-    img = _draw_cell_grid(ax_world, init_grid, cmap, norm, dark=True)
+    img = _draw_cell_grid(ax_world, init_grid, cmap, norm, dark=True, theme=theme)
     ax_world.set_xlim(-0.5, resolved_width - 0.5)
     ax_world.set_ylim(resolved_height - 0.5, -0.5)
     ax_world.set_title("Agent States")
@@ -302,8 +295,8 @@ def render_rule_animation(
         max_val = max(values) if values else 1.0
         ax_m.set_xlim(0, 1 if x_max == 0 else x_max)
         ax_m.set_ylim(0, max(1.0, max_val * 1.1))
-        label = _active_theme.metric_labels.get(m_name, m_name)
-        color = _active_theme.metric_colors.get(m_name, "tab:blue")
+        label = theme.metric_labels.get(m_name, m_name)
+        color = theme.metric_colors.get(m_name, "tab:blue")
         ax_m.set_title(label)
         ax_m.set_xlabel("Step")
         ax_m.set_ylabel(label)
@@ -349,6 +342,7 @@ def render_batch(
     top_n: int = 3,
     fps: int = 8,
     metric_names: list[str] | None = None,
+    theme: Theme = DEFAULT_THEME,
 ) -> list[Path]:
     """Batch-render top-N rule animations per phase."""
     if metric_names is None:
@@ -383,6 +377,7 @@ def render_batch(
                 output_path=out_path,
                 fps=fps,
                 metric_names=metric_names,
+                theme=theme,
             )
             created.append(out_path)
 
@@ -400,13 +395,14 @@ def render_snapshot_grid(
     output_path: Path,
     grid_width: int = 20,
     grid_height: int = 20,
+    theme: Theme = DEFAULT_THEME,
 ) -> None:
     """Render (n_phases x n_steps) grid of cell-fill agent state panels."""
     n_phases = len(phase_configs)
     n_steps = len(snapshot_steps)
 
     fig, axes = plt.subplots(n_phases, n_steps, figsize=(3 * n_steps, 3 * n_phases), squeeze=False)
-    cmap, norm = _state_cmap(dark=False)
+    cmap, norm = _state_cmap(dark=False, theme=theme)
 
     for row_idx, (label, sim_log_path, metrics_path, rule_id) in enumerate(phase_configs):
         sim_rows = pq.read_table(sim_log_path, filters=[("rule_id", "=", rule_id)]).to_pylist()
@@ -433,16 +429,16 @@ def render_snapshot_grid(
             actual_step = min(available_steps, key=lambda s: abs(s - target_step))
             rows = by_step[actual_step]
             grid = _build_grid_array(rows, grid_width, grid_height)
-            _draw_cell_grid(ax, grid, cmap, norm, dark=False)
+            _draw_cell_grid(ax, grid, cmap, norm, dark=False, theme=theme)
 
             if row_idx == 0:
                 ax.set_title(f"Step {target_step}", fontsize=10)
             if col_idx == 0:
-                desc = _active_theme.phase_descriptions.get(label, label)
+                desc = theme.phase_descriptions.get(label, label)
                 mi_str = f"\n(MI = {mi_val:.3f})" if mi_val is not None else ""
                 ax.set_ylabel(f"{desc}{mi_str}", fontsize=9)
 
-    handles = _build_state_legend_handles(dark=False)
+    handles = _build_state_legend_handles(dark=False, theme=theme)
     fig.legend(
         handles=handles,
         loc="lower center",
@@ -467,6 +463,7 @@ def render_metric_distribution(
     metric_names: list[str],
     output_path: Path,
     stats_path: Path | None = None,
+    theme: Theme = DEFAULT_THEME,
 ) -> None:
     """Phase-colored box plots with scatter strip and optional significance brackets."""
     n_metrics = len(metric_names)
@@ -497,7 +494,7 @@ def render_metric_distribution(
             if not data:
                 continue
             pos = positions[i]
-            color = _active_theme.phase_colors.get(label, "tab:blue")
+            color = theme.phase_colors.get(label, "tab:blue")
             bp = ax.boxplot(
                 [data],
                 positions=[pos],
@@ -522,8 +519,8 @@ def render_metric_distribution(
 
         ax.set_xticks(positions)
         ax.set_xticklabels(labels)
-        ax.set_title(_active_theme.metric_labels.get(m_name, m_name))
-        ax.set_ylabel(_active_theme.metric_labels.get(m_name, m_name))
+        ax.set_title(theme.metric_labels.get(m_name, m_name))
+        ax.set_ylabel(theme.metric_labels.get(m_name, m_name))
 
         # Significance annotation
         non_empty = [d for d in all_data if d]
@@ -580,6 +577,7 @@ def render_metric_timeseries(
     metric_name: str,
     output_path: Path,
     shared_ylim: bool = True,
+    theme: Theme = DEFAULT_THEME,
 ) -> None:
     """Time-series overlay of metric trajectories per phase."""
     n_phases = len(phase_configs)
@@ -587,7 +585,7 @@ def render_metric_timeseries(
 
     for p_idx, (label, metrics_path, rule_ids) in enumerate(phase_configs):
         ax = axes[0, p_idx]
-        color = _active_theme.phase_colors.get(label, "tab:blue")
+        color = theme.phase_colors.get(label, "tab:blue")
 
         for rule_id in rule_ids:
             metric_rows = pq.read_table(
@@ -600,9 +598,9 @@ def render_metric_timeseries(
             ]
             ax.plot(steps, vals, color=color, alpha=0.4, linewidth=1.8)
 
-        ax.set_title(_active_theme.phase_descriptions.get(label, label))
+        ax.set_title(theme.phase_descriptions.get(label, label))
         ax.set_xlabel("Step")
-        ax.set_ylabel(_active_theme.metric_labels.get(metric_name, metric_name))
+        ax.set_ylabel(theme.metric_labels.get(metric_name, metric_name))
         ax.grid(True, alpha=0.3)
 
     if shared_ylim and n_phases > 0:
@@ -612,7 +610,7 @@ def render_metric_timeseries(
         for i in range(n_phases):
             axes[0, i].set_ylim(global_ymin, global_ymax)
 
-    fig.suptitle(_active_theme.metric_labels.get(metric_name, metric_name), fontsize=14)
+    fig.suptitle(theme.metric_labels.get(metric_name, metric_name), fontsize=14)
     fig.tight_layout()
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -633,6 +631,7 @@ def render_filmstrip(
     base_dir: Path | None = None,
     grid_width: int | None = None,
     grid_height: int | None = None,
+    theme: Theme = DEFAULT_THEME,
 ) -> None:
     """Render horizontal filmstrip of cell-fill panels (dark mode) with step labels."""
     if base_dir is None:
@@ -682,18 +681,18 @@ def render_filmstrip(
     indices = [int(i * (len(steps) - 1) / max(1, actual_n - 1)) for i in range(actual_n)]
     selected_steps = [steps[i] for i in indices]
 
-    cmap, norm = _state_cmap(dark=True)
+    cmap, norm = _state_cmap(dark=True, theme=theme)
     fig, axes = plt.subplots(1, actual_n, figsize=(3 * actual_n, 3), squeeze=False)
-    fig.patch.set_facecolor(_active_theme.empty_cell_color_dark)
+    fig.patch.set_facecolor(theme.empty_cell_color_dark)
 
     for col_idx, step in enumerate(selected_steps):
         ax = axes[0, col_idx]
         grid = _build_grid_array(by_step[step], resolved_width, resolved_height)
-        _draw_cell_grid(ax, grid, cmap, norm, dark=True)
+        _draw_cell_grid(ax, grid, cmap, norm, dark=True, theme=theme)
         ax.set_title(f"Step {step}", fontsize=9, color="white")
 
     fig.suptitle(f"Rule: {rule_id}", fontsize=11, color="white")
-    handles = _build_state_legend_handles(dark=True)
+    handles = _build_state_legend_handles(dark=True, theme=theme)
     fig.legend(
         handles=handles,
         loc="lower center",
