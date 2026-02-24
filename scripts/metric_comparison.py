@@ -13,17 +13,14 @@ from __future__ import annotations
 import json
 import math
 import statistics
-import sys
 from pathlib import Path
 
 import pyarrow.parquet as pq
 from scipy.stats import mannwhitneyu
 
+from objectless_alife.stats import _holm_bonferroni
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
-from objectless_alife.stats import _holm_bonferroni  # noqa: E402
-
 DATA_DIR = PROJECT_ROOT / "data" / "stage_d"
 
 COMPARISON_METRICS = [

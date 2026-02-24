@@ -16,19 +16,16 @@ from __future__ import annotations
 import json
 import random
 import statistics
-import sys
 from pathlib import Path
 
 import pyarrow.parquet as pq
 
+from objectless_alife.aggregation import run_multi_seed_robustness
+from objectless_alife.config import MultiSeedConfig
+from objectless_alife.rules import ObservationPhase
+from scripts.multi_seed_p1_control import summarize_multi_seed_results
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
-from objectless_alife.aggregation import run_multi_seed_robustness  # noqa: E402
-from objectless_alife.config import MultiSeedConfig  # noqa: E402
-from objectless_alife.rules import ObservationPhase  # noqa: E402
-from scripts.multi_seed_p1_control import summarize_multi_seed_results  # noqa: E402
-
 DATA_DIR = PROJECT_ROOT / "data" / "stage_d"
 
 CONDITION_MAP = {

@@ -13,23 +13,19 @@ from __future__ import annotations
 import argparse
 import random
 import statistics
-import sys
 from pathlib import Path
 
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
 import pyarrow.parquet as pq  # noqa: E402
 
 from objectless_alife.aggregation import select_top_rules_by_delta_mi  # noqa: E402
 from objectless_alife.metrics import shuffle_null_mi  # noqa: E402
 from scripts._common import load_final_snapshots  # noqa: E402
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data" / "stage_d"
 DEFAULT_N_SHUFFLES = 200
 GRID_W, GRID_H = 20, 20

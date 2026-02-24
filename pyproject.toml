@@ -38,10 +38,14 @@ select = ["E", "F", "I", "B"]
 python_version = "3.11"
 ignore_missing_imports = true
 files = [
-  "objectless_alife/config.py",
-  "objectless_alife/aggregation.py",
-  "objectless_alife/run_search.py",
-  "objectless_alife/stats.py",
+  "objectless_alife/config/",
+  "objectless_alife/domain/",
+  "objectless_alife/metrics/",
+  "objectless_alife/io/",
+  "objectless_alife/analysis/",
+  "objectless_alife/simulation/",
+  "objectless_alife/experiments/",
+  "objectless_alife/viz/",
 ]
 
 [dependency-groups]

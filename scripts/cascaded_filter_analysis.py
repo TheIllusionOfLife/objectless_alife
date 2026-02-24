@@ -12,18 +12,15 @@ from __future__ import annotations
 
 import json
 import statistics
-import sys
 from pathlib import Path
 
 import pyarrow.parquet as pq
 
+from objectless_alife.config import SearchConfig, SimulationResult
+from objectless_alife.rules import ObservationPhase
+from objectless_alife.simulation import run_batch_search
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
-from objectless_alife.config import SearchConfig, SimulationResult  # noqa: E402
-from objectless_alife.rules import ObservationPhase  # noqa: E402
-from objectless_alife.simulation import run_batch_search  # noqa: E402
-
 DATA_DIR = PROJECT_ROOT / "data" / "stage_d"
 
 CONDITIONS = [

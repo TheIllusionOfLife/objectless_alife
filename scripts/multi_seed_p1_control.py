@@ -11,21 +11,18 @@ Usage:
 from __future__ import annotations
 
 import statistics
-import sys
 from pathlib import Path
 
 import pyarrow.parquet as pq
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
-from objectless_alife.aggregation import (  # noqa: E402
+from objectless_alife.aggregation import (
     run_multi_seed_robustness,
     select_top_rules_by_delta_mi,
 )
-from objectless_alife.config import MultiSeedConfig  # noqa: E402
-from objectless_alife.rules import ObservationPhase  # noqa: E402
+from objectless_alife.config import MultiSeedConfig
+from objectless_alife.rules import ObservationPhase
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data" / "stage_d"
 
 PHASE_DIR_LABELS: dict[ObservationPhase, str] = {

@@ -69,8 +69,8 @@ uv run python -m objectless_alife.stats --pairwise --dir-a data/stage_b --dir-b 
 - 4-space indentation, type hints on public APIs.
 - Keep deterministic behavior by explicit seed handling (`rule_seed`, `sim_seed`).
 - Keep world dynamics and metrics decoupled:
-  - Simulation logic stays in `objectless_alife/world.py`, `objectless_alife/simulation.py`, and `objectless_alife/run_search.py`.
-  - Metric calculations stay in `objectless_alife/metrics.py`.
+  - Simulation logic stays in `objectless_alife/domain/world.py`, `objectless_alife/simulation/engine.py`, and `objectless_alife/experiments/search.py`.
+  - Metric calculations stay in `objectless_alife/metrics/` (spatial, temporal, information submodules).
 - Keep filters as detectors (decision logic), not as scoring functions.
 - Preserve observation phase compatibility:
   - Phase 1 table size: 20
@@ -91,7 +91,7 @@ uv run pytest -q
 
 - Add or update tests under `tests/` mirroring source modules.
 - For behavior changes, include deterministic seed-based tests.
-- Validate both normal run and experiment mode when touching `objectless_alife/run_search.py`.
+- Validate both normal run and experiment mode when touching `objectless_alife/experiments/search.py`.
 
 ## Repository Etiquette
 
@@ -118,7 +118,7 @@ Mirror these checks locally before opening a PR.
 
 - `data/` and `output/` are generated artifact directories and should remain untracked.
 - `objectless_alife.visualize` defaults `--base-dir` to current directory; absolute paths outside that base are rejected unless base-dir is explicitly set.
-- Large experiment workloads are bounded in `objectless_alife/config.py` by `MAX_EXPERIMENT_WORK_UNITS`.
+- Large experiment workloads are bounded in `objectless_alife/config/constants.py` by `MAX_EXPERIMENT_WORK_UNITS`.
 
 ## Common Gotchas
 

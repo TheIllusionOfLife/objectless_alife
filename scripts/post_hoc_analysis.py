@@ -17,21 +17,16 @@ import json
 import math
 import random
 import statistics
-import sys
 from pathlib import Path
 
 import pyarrow.parquet as pq
 
-# Ensure project root is on sys.path
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
-from objectless_alife.aggregation import (  # noqa: E402
+from objectless_alife.aggregation import (
     run_halt_window_sweep,
     select_top_rules_by_delta_mi,
 )
-from objectless_alife.config import HaltWindowSweepConfig  # noqa: E402
-from objectless_alife.metrics import (  # noqa: E402
+from objectless_alife.config import HaltWindowSweepConfig
+from objectless_alife.metrics import (
     block_shuffle_null_mi,
     fixed_marginal_null_mi,
     neighbor_mutual_information,
@@ -43,6 +38,7 @@ from objectless_alife.metrics import (  # noqa: E402
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data" / "stage_d"
 P2_METRICS = DATA_DIR / "phase_2" / "logs" / "metrics_summary.parquet"
 P2_RULES = DATA_DIR / "phase_2" / "rules"
@@ -290,9 +286,9 @@ def run_capacity_matched_analysis() -> dict[str, dict[str, float]]:
     """Run Phase 5 and 6 experiments; compare to P1/P2 from stage_d."""
     print("\n=== Capacity-Matched Controls ===")
 
-    from objectless_alife.aggregation import _collect_final_metric_rows  # noqa: E402
-    from objectless_alife.rules import ObservationPhase  # noqa: E402
-    from objectless_alife.simulation import run_batch_search  # noqa: E402
+    from objectless_alife.experiments.summaries import collect_final_metric_rows
+    from objectless_alife.rules import ObservationPhase
+    from objectless_alife.simulation import run_batch_search
 
     # Run Phase 5 (Capacity-matched Phase 1)
     print("  Running Phase 5 (capacity-matched P1) — 5000 rules...")
@@ -305,7 +301,7 @@ def run_capacity_matched_analysis() -> dict[str, dict[str, float]]:
     phase5_survived = sum(1 for r in phase5_results if r.survived)
     phase5_survival = phase5_survived / len(phase5_results) * 100 if phase5_results else 0.0
 
-    phase5_metrics = _collect_final_metric_rows(
+    phase5_metrics = collect_final_metric_rows(
         phase5_out / "logs" / "metrics_summary.parquet",
         MI_COLUMNS,
         phase5_results,
@@ -331,7 +327,7 @@ def run_capacity_matched_analysis() -> dict[str, dict[str, float]]:
     phase6_survived = sum(1 for r in phase6_results if r.survived)
     phase6_survival = phase6_survived / len(phase6_results) * 100 if phase6_results else 0.0
 
-    phase6_metrics = _collect_final_metric_rows(
+    phase6_metrics = collect_final_metric_rows(
         phase6_out / "logs" / "metrics_summary.parquet",
         MI_COLUMNS,
         phase6_results,

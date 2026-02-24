@@ -21,13 +21,11 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
 from objectless_alife.metrics import neighbor_pair_count  # noqa: E402
 from objectless_alife.stats import load_final_step_metrics  # noqa: E402
 from scripts._common import load_final_snapshots  # noqa: E402
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data" / "stage_d"
 GRID_W, GRID_H = 20, 20
 DEFAULT_N_BOOTSTRAPS = 2000
