@@ -589,18 +589,9 @@ def run_experiment(config: ExperimentConfig) -> list[SimulationResult]:
     return all_results
 
 
-def select_top_rules_by_delta_mi(
-    metrics_path: Path,
-    rules_dir: Path,
-    top_k: int = 50,
-) -> list[int]:
-    """Select top-K rule seeds by delta_mi from existing experiment data.
-
-    Returns a list of rule seeds sorted by descending delta_mi.
-    Only includes surviving rules.
-    """
+def _load_final_step_metrics(metrics_path: Path) -> dict[str, dict[str, float]]:
+    """Load final step metrics for each rule from parquet."""
     metrics_file = pq.ParquetFile(metrics_path)
-    # Collect final-step MI and shuffle null per rule
     max_steps: dict[str, int] = {}
     rule_metrics: dict[str, dict[str, float]] = {}
 
@@ -619,52 +610,60 @@ def select_top_rules_by_delta_mi(
                     rule_metrics[rid] = {"mi": float(mi), "null": float(null)}
                 else:
                     rule_metrics.pop(rid, None)  # Clear stale entry from earlier step
+    return rule_metrics
 
-    # Filter to survived rules only — prefer Parquet if experiment_runs exists
+
+def _load_survived_rule_seeds(rules_dir: Path) -> dict[str, int]:
+    """Load rule seeds for all surviving rules from parquet or JSON."""
     experiment_parquet = rules_dir.parent / "logs" / "experiment_runs.parquet"
-    survived_rule_ids: set[str] = set()
+    survived_seeds: dict[str, int] = {}
+
     if experiment_parquet.exists():
-        for batch in pq.ParquetFile(experiment_parquet).iter_batches(
-            columns=["rule_id", "survived"], batch_size=8192
-        ):
-            d = batch.to_pydict()
-            for idx, rid in enumerate(d["rule_id"]):
-                if d["survived"][idx]:
-                    survived_rule_ids.add(str(rid))
-        survived_seeds: list[tuple[int, float]] = []
-        # Build a rule_id → rule_seed lookup from the same Parquet
-        rid_to_seed: dict[str, int] = {}
-        for batch in pq.ParquetFile(experiment_parquet).iter_batches(
-            columns=["rule_id", "rule_seed"], batch_size=8192
-        ):
-            d = batch.to_pydict()
-            for idx, rid in enumerate(d["rule_id"]):
-                seed_val = d["rule_seed"][idx]
-                if seed_val is not None:
-                    rid_to_seed[str(rid)] = int(seed_val)
-        for rid_str, m in rule_metrics.items():
-            if rid_str not in survived_rule_ids:
-                continue
-            seed = rid_to_seed.get(rid_str)
-            if seed is None:
-                continue  # skip if rule_seed missing
-            delta = m["mi"] - m["null"]
-            survived_seeds.append((seed, delta))
+        table = pq.read_table(
+            experiment_parquet,
+            columns=["rule_id", "rule_seed"],
+            filters=[("survived", "=", True)],
+        )
+        d = table.to_pydict()
+        for i, rid in enumerate(d["rule_id"]):
+            seed_val = d["rule_seed"][i]
+            if seed_val is not None:
+                survived_seeds[str(rid)] = int(seed_val)
     else:
-        survived_seeds = []
         for path in sorted(rules_dir.glob("*.json")):
             data = json.loads(path.read_text())
             if not data.get("survived", False):
                 continue
             rid = data["rule_id"]
-            if rid not in rule_metrics:
-                continue
-            delta = rule_metrics[rid]["mi"] - rule_metrics[rid]["null"]
             seed = data["metadata"]["rule_seed"]
-            survived_seeds.append((int(seed), delta))
+            survived_seeds[rid] = int(seed)
 
-    survived_seeds.sort(key=lambda x: x[1], reverse=True)
-    return [seed for seed, _ in survived_seeds[:top_k]]
+    return survived_seeds
+
+
+def select_top_rules_by_delta_mi(
+    metrics_path: Path,
+    rules_dir: Path,
+    top_k: int = 50,
+) -> list[int]:
+    """Select top-K rule seeds by delta_mi from existing experiment data.
+
+    Returns a list of rule seeds sorted by descending delta_mi.
+    Only includes surviving rules.
+    """
+    rule_metrics = _load_final_step_metrics(metrics_path)
+    survived_seeds = _load_survived_rule_seeds(rules_dir)
+
+    candidate_seeds: list[tuple[int, float]] = []
+
+    for rid, seed in survived_seeds.items():
+        if rid in rule_metrics:
+            m = rule_metrics[rid]
+            delta = m["mi"] - m["null"]
+            candidate_seeds.append((seed, delta))
+
+    candidate_seeds.sort(key=lambda x: x[1], reverse=True)
+    return [seed for seed, _ in candidate_seeds[:top_k]]
 
 
 def _run_simulation_to_completion(
