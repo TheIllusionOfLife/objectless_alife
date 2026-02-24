@@ -7,6 +7,8 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from matplotlib import animation
 from matplotlib.colors import BoundaryNorm, ListedColormap
@@ -462,6 +464,34 @@ def render_snapshot_grid(
 # ---------------------------------------------------------------------------
 
 
+def _aggregate_metric_data(
+    phase_data: list[tuple[str, Path]],
+    metric_name: str,
+) -> tuple[list[list[float]], list[str]]:
+    """Aggregate metric values from multiple phases for a single metric."""
+    all_data: list[list[float]] = []
+    labels: list[str] = []
+
+    for label, metrics_path in phase_data:
+        final_table = load_final_step_metrics(metrics_path)
+        try:
+            col = final_table.column(metric_name).combine_chunks()
+        except KeyError:
+            all_data.append([])
+            labels.append(label)
+            continue
+
+        values = col.cast(pa.float64())
+        # Filter finite values (excludes NaN, Inf, and nulls)
+        mask = pc.is_finite(values).fill_null(False)
+        valid_values = values.filter(mask)
+
+        all_data.append(valid_values.to_pylist())
+        labels.append(label)
+
+    return all_data, labels
+
+
 def render_metric_distribution(
     phase_data: list[tuple[str, Path]],
     metric_names: list[str],
@@ -478,18 +508,7 @@ def render_metric_distribution(
 
     for m_idx, m_name in enumerate(metric_names):
         ax = axes[0, m_idx]
-        all_data: list[list[float]] = []
-        labels: list[str] = []
-
-        for label, metrics_path in phase_data:
-            final_table = load_final_step_metrics(metrics_path)
-            vals = []
-            for row in final_table.to_pylist():
-                v = row.get(m_name)
-                if v is not None and not (isinstance(v, float) and math.isnan(v)):
-                    vals.append(float(v))
-            all_data.append(vals)
-            labels.append(label)
+        all_data, labels = _aggregate_metric_data(phase_data, m_name)
 
         # Phase-colored box plots + scatter strip
         positions = list(range(1, len(all_data) + 1))

@@ -43,3 +43,6 @@ files = [
   "objectless_alife/run_search.py",
   "objectless_alife/stats.py",
 ]
+
+[dependency-groups]
+dev = []
