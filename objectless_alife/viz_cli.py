@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-import objectless_alife.viz_render as viz_render
 from objectless_alife.viz_render import (
     _resolve_within_base,
     render_batch,
@@ -14,6 +13,7 @@ from objectless_alife.viz_render import (
     render_snapshot_grid,
     select_top_rules,
 )
+from objectless_alife.viz_theme import get_theme
 
 
 def _build_single_parser(sub: argparse._SubParsersAction) -> None:
@@ -90,6 +90,7 @@ def _handle_single(args: argparse.Namespace) -> None:
         base_dir=args.base_dir,
         grid_width=args.grid_width,
         grid_height=args.grid_height,
+        theme=args.theme_obj,
     )
 
 
@@ -103,6 +104,7 @@ def _handle_batch(args: argparse.Namespace) -> None:
         output_dir=output_dir,
         top_n=args.top_n,
         fps=args.fps,
+        theme=args.theme_obj,
     )
 
 
@@ -145,6 +147,7 @@ def _handle_figure(args: argparse.Namespace) -> None:
         phase_configs=snapshot_configs,
         snapshot_steps=[0, 25, 50, 75, 100],
         output_path=output_dir / "fig1_snapshot_grid.pdf",
+        theme=args.theme_obj,
     )
 
     stats_path = getattr(args, "stats_path", None)
@@ -155,6 +158,7 @@ def _handle_figure(args: argparse.Namespace) -> None:
         metric_names=["neighbor_mutual_information"],
         output_path=output_dir / "fig2_mi_distribution.pdf",
         stats_path=stats_path,
+        theme=args.theme_obj,
     )
 
     render_metric_timeseries(
@@ -164,6 +168,7 @@ def _handle_figure(args: argparse.Namespace) -> None:
         ],
         metric_name="neighbor_mutual_information",
         output_path=output_dir / "fig3_mi_timeseries.pdf",
+        theme=args.theme_obj,
     )
 
 
@@ -176,6 +181,7 @@ def _handle_filmstrip(args: argparse.Namespace) -> None:
         base_dir=args.base_dir,
         grid_width=args.grid_width,
         grid_height=args.grid_height,
+        theme=args.theme_obj,
     )
 
 
@@ -196,7 +202,7 @@ def main() -> None:
     args = parser.parse_args()
 
     # Apply theme
-    viz_render.set_active_theme(args.theme)
+    args.theme_obj = get_theme(args.theme)
 
     args.func(args)
 
